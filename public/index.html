@@ -1,1 +1,992 @@
-<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Hito 1</title></head><body><main><h1>Hito 1</h1><p>Frontend servido por el backend y comunicado exclusivamente mediante API.</p><button id="load">Cargar usuarios</button><pre id="out"></pre></main><script type="module" src="/js/app.js"></script></body></html>
+<!DOCTYPE html>
+
+<html lang="es">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>
+        Gestión de Usuarios
+    </title>
+
+
+    <style>
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --background: #f5f7fb;
+            --white: #ffffff;
+            --text: #1e293b;
+            --muted: #64748b;
+            --border: #e2e8f0;
+            --danger: #ef4444;
+            --success: #22c55e;
+        }
+
+
+        body {
+            font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background: var(--background);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+
+        /* ==================================
+           HEADER
+        ================================== */
+
+        header {
+            height: 70px;
+            background: var(--white);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 6%;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 20px;
+            font-weight: 700;
+        }
+
+
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            background: linear-gradient( 135deg, var(--primary), var(--secondary) );
+            border-radius: 12px;
+            font-size: 20px;
+        }
+
+
+        .header-user {
+            display: none;
+            align-items: center;
+            gap: 15px;
+        }
+
+
+            .header-user span {
+                color: var(--muted);
+                font-size: 14px;
+            }
+
+
+        /* ==================================
+           VIEWS
+        ================================== */
+
+        .view {
+            display: none;
+        }
+
+
+            .view.active {
+                display: block;
+            }
+
+
+        /* ==================================
+           WELCOME
+        ================================== */
+
+        #welcome-view {
+            min-height: calc(100vh - 70px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 50px 20px;
+            background: radial-gradient( circle at top left, rgba(99,102,241,.15), transparent 35% ), radial-gradient( circle at bottom right, rgba(139,92,246,.15), transparent 35% );
+        }
+
+
+            #welcome-view.active {
+                display: flex;
+            }
+
+
+        .hero {
+            width: 100%;
+            max-width: 1100px;
+            display: grid;
+            grid-template-columns: 1.1fr .9fr;
+            gap: 60px;
+            align-items: center;
+        }
+
+
+        .hero-text h1 {
+            font-size: clamp(40px, 6vw, 68px);
+            line-height: 1.05;
+            margin-bottom: 25px;
+            background: linear-gradient( 135deg, var(--primary), var(--secondary) );
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+            -webkit-text-fill-color: transparent;
+        }
+
+
+        .hero-text p {
+            color: var(--muted);
+            font-size: 18px;
+            line-height: 1.7;
+            margin-bottom: 35px;
+        }
+
+
+        .hero-buttons {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+
+        .hero-card {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 25px;
+            padding: 35px;
+            box-shadow: 0 20px 60px rgba(15,23,42,.08);
+        }
+
+
+        .hero-card-icon {
+            width: 70px;
+            height: 70px;
+            background: #eef2ff;
+            color: var(--primary);
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            margin-bottom: 25px;
+        }
+
+
+        .hero-card h3 {
+            font-size: 22px;
+            margin-bottom: 12px;
+        }
+
+
+        .hero-card p {
+            color: var(--muted);
+            line-height: 1.6;
+        }
+
+
+        /* ==================================
+           BOTONES
+        ================================== */
+
+        button {
+            border: none;
+            cursor: pointer;
+            font-family: inherit;
+        }
+
+
+        .btn {
+            padding: 13px 22px;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 600;
+            transition: .2s;
+        }
+
+
+            .btn:hover {
+                transform: translateY(-2px);
+            }
+
+
+        .btn-primary {
+            color: white;
+            background: linear-gradient( 135deg, var(--primary), var(--secondary) );
+            box-shadow: 0 8px 20px rgba(99,102,241,.25);
+        }
+
+
+        .btn-secondary {
+            color: var(--text);
+            background: white;
+            border: 1px solid var(--border);
+        }
+
+
+        .btn-danger {
+            color: white;
+            background: var(--danger);
+        }
+
+
+        /* ==================================
+           AUTH
+        ================================== */
+
+        .auth-container {
+            min-height: calc(100vh - 70px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+        }
+
+
+        .auth-card {
+            width: 100%;
+            max-width: 430px;
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 22px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(15,23,42,.08);
+        }
+
+
+            .auth-card h2 {
+                font-size: 28px;
+                margin-bottom: 10px;
+            }
+
+
+            .auth-card > p {
+                color: var(--muted);
+                margin-bottom: 30px;
+            }
+
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+
+            .form-group label {
+                display: block;
+                font-size: 14px;
+                font-weight: 600;
+                margin-bottom: 8px;
+            }
+
+
+            .form-group input {
+                width: 100%;
+                padding: 13px 15px;
+                border: 1px solid var(--border);
+                border-radius: 10px;
+                font-size: 15px;
+                outline: none;
+                transition: .2s;
+            }
+
+
+                .form-group input:focus {
+                    border-color: var(--primary);
+                    box-shadow: 0 0 0 3px rgba(99,102,241,.1);
+                }
+
+
+        .form-footer {
+            text-align: center;
+            margin-top: 25px;
+            color: var(--muted);
+            font-size: 14px;
+        }
+
+
+        .link-button {
+            background: none;
+            color: var(--primary);
+            font-weight: 600;
+            padding: 0;
+        }
+
+
+            .link-button:hover {
+                text-decoration: underline;
+            }
+
+
+        /* ==================================
+           DASHBOARD
+        ================================== */
+
+        .dashboard {
+            width: 100%;
+            max-width: 1150px;
+            margin: 0 auto;
+            padding: 45px 25px;
+        }
+
+
+        .dashboard-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 35px;
+            gap: 20px;
+        }
+
+
+            .dashboard-header h1 {
+                font-size: 32px;
+                margin-bottom: 8px;
+            }
+
+
+            .dashboard-header p {
+                color: var(--muted);
+            }
+
+
+        .dashboard-section {
+            margin-top: 35px;
+        }
+
+
+            .dashboard-section h2 {
+                margin-bottom: 20px;
+                font-size: 22px;
+            }
+
+
+        /* ==================================
+           TARJETAS DE USUARIO
+        ================================== */
+
+        #users-container {
+            display: grid;
+            grid-template-columns: repeat( auto-fit, minmax(300px, 1fr) );
+            gap: 20px;
+        }
+
+
+        .user-card {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            padding: 22px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            box-shadow: 0 8px 25px rgba(15,23,42,.04);
+            transition: .2s;
+        }
+
+
+            .user-card:hover {
+                transform: translateY(-3px);
+                box-shadow: 0 15px 30px rgba(15,23,42,.08);
+            }
+
+
+        .user-avatar {
+            min-width: 52px;
+            width: 52px;
+            height: 52px;
+            background: #eef2ff;
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 23px;
+        }
+
+
+        .user-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+
+            .user-info h3 {
+                font-size: 16px;
+                margin-bottom: 5px;
+                word-break: break-all;
+            }
+
+
+            .user-info p {
+                color: var(--muted);
+                font-size: 12px;
+                margin-bottom: 8px;
+            }
+
+
+        .user-status {
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+
+            .user-status.active {
+                color: var(--success);
+            }
+
+
+            .user-status.inactive {
+                color: var(--danger);
+            }
+
+
+            .user-status.unknown {
+                color: var(--muted);
+            }
+
+
+        .user-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
+        }
+
+
+        .btn-small {
+            padding: 8px 11px;
+            font-size: 12px;
+            border-radius: 8px;
+        }
+
+
+        .btn-status {
+            color: var(--primary);
+            background: #eef2ff;
+        }
+
+
+        .btn-delete {
+            color: white;
+            background: var(--danger);
+        }
+
+
+        /* ==================================
+           ESTADOS VACÍOS / LOADING
+        ================================== */
+
+        .loading,
+        .empty-users {
+            grid-column: 1 / -1;
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            padding: 50px;
+            text-align: center;
+            color: var(--muted);
+        }
+
+
+        .empty-icon {
+            font-size: 40px;
+            margin-bottom: 15px;
+        }
+
+
+        .empty-users h3 {
+            color: var(--text);
+            margin-bottom: 8px;
+        }
+
+
+        /* ==================================
+           ALERTAS
+        ================================== */
+
+        #alert-container {
+            position: fixed;
+            right: 20px;
+            bottom: 20px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+
+        .alert {
+            min-width: 280px;
+            max-width: 400px;
+            padding: 15px 18px;
+            border-radius: 12px;
+            color: white;
+            box-shadow: 0 10px 30px rgba(0,0,0,.15);
+            animation: slideIn .3s ease;
+        }
+
+
+            .alert.success {
+                background: var(--success);
+            }
+
+
+            .alert.error {
+                background: var(--danger);
+            }
+
+
+        @keyframes slideIn {
+
+            from {
+                opacity: 0;
+                transform: translateX(30px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+
+        /* ==================================
+           RESPONSIVE
+        ================================== */
+
+        @media (max-width: 800px) {
+
+            .hero {
+                grid-template-columns: 1fr;
+                gap: 35px;
+            }
+
+
+            .hero-text {
+                text-align: center;
+            }
+
+
+            .hero-buttons {
+                justify-content: center;
+            }
+
+
+            .dashboard-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+
+
+        @media (max-width: 600px) {
+
+            header {
+                padding: 0 20px;
+            }
+
+
+            .logo span {
+                display: none;
+            }
+
+
+            .auth-card {
+                padding: 25px;
+            }
+
+
+            .hero-text h1 {
+                font-size: 42px;
+            }
+
+
+            .user-card {
+                flex-wrap: wrap;
+            }
+
+
+            .user-actions {
+                width: 100%;
+                flex-direction: row;
+            }
+
+
+                .user-actions button {
+                    flex: 1;
+                }
+        }
+    </style>
+
+</head>
+
+
+<body>
+
+
+    <!-- ==================================
+         HEADER
+    ================================== -->
+
+    <header>
+
+        <div class="logo">
+
+            <div class="logo-icon">
+                👥
+            </div>
+
+            <span>
+                Gestión de Usuarios
+            </span>
+
+        </div>
+
+
+        <div id="header-user"
+             class="header-user">
+
+            <span id="header-username">
+            </span>
+
+            <button id="header-logout"
+                    class="btn btn-danger">
+                Cerrar sesión
+            </button>
+
+        </div>
+
+    </header>
+
+
+    <main>
+
+
+        <!-- ==================================
+             BIENVENIDA
+        ================================== -->
+
+        <section id="welcome-view"
+                 class="view active">
+
+            <div class="hero">
+
+
+                <div class="hero-text">
+
+                    <h1>
+                        Gestiona tus usuarios
+                        de forma sencilla.
+                    </h1>
+
+
+                    <p>
+                        Una aplicación moderna para
+                        registrar usuarios, iniciar sesión
+                        y gestionar las cuentas de forma
+                        sencilla y segura.
+                    </p>
+
+
+                    <div class="hero-buttons">
+
+                        <button id="go-login"
+                                class="btn btn-primary">
+                            Iniciar sesión
+                        </button>
+
+
+                        <button id="go-register"
+                                class="btn btn-secondary">
+                            Crear cuenta
+                        </button>
+
+                    </div>
+
+                </div>
+
+
+                <div class="hero-card">
+
+                    <div class="hero-card-icon">
+                        🔐
+                    </div>
+
+
+                    <h3>
+                        Autenticación segura
+                    </h3>
+
+
+                    <p>
+                        Tu aplicación utiliza sesiones
+                        de Express para mantener la sesión
+                        del usuario y proteger las rutas
+                        privadas.
+                    </p>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- ==================================
+             LOGIN
+        ================================== -->
+
+        <section id="login-view"
+                 class="view">
+
+            <div class="auth-container">
+
+                <div class="auth-card">
+
+                    <h2>
+                        Bienvenido
+                    </h2>
+
+
+                    <p>
+                        Inicia sesión para acceder
+                        al panel de usuarios.
+                    </p>
+
+
+                    <form id="login-form">
+
+
+                        <div class="form-group">
+
+                            <label for="login-email">
+                                Email
+                            </label>
+
+                            <input type="email"
+                                   id="login-email"
+                                   placeholder="tu@email.com"
+                                   required>
+
+                        </div>
+
+
+                        <div class="form-group">
+
+                            <label for="login-password">
+                                Contraseña
+                            </label>
+
+                            <input type="password"
+                                   id="login-password"
+                                   placeholder="••••••••"
+                                   required>
+
+                        </div>
+
+
+                        <button type="submit"
+                                class="btn btn-primary"
+                                style="width:100%;">
+                            Iniciar sesión
+                        </button>
+
+                    </form>
+
+
+                    <div class="form-footer">
+
+                        ¿No tienes una cuenta?
+
+                        <button id="login-register"
+                                class="link-button">
+                            Regístrate
+                        </button>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- ==================================
+             REGISTRO
+        ================================== -->
+
+        <section id="register-view"
+                 class="view">
+
+            <div class="auth-container">
+
+                <div class="auth-card">
+
+                    <h2>
+                        Crear cuenta
+                    </h2>
+
+
+                    <p>
+                        Regístrate para comenzar.
+                    </p>
+
+
+                    <form id="register-form">
+
+
+                        <div class="form-group">
+
+                            <label for="register-email">
+                                Email
+                            </label>
+
+                            <input type="email"
+                                   id="register-email"
+                                   placeholder="tu@email.com"
+                                   required>
+
+                        </div>
+
+
+                        <div class="form-group">
+
+                            <label for="register-password">
+                                Contraseña
+                            </label>
+
+                            <input type="password"
+                                   id="register-password"
+                                   placeholder="••••••••"
+                                   minlength="8"
+                                   required>
+
+                        </div>
+
+
+                        <button type="submit"
+                                class="btn btn-primary"
+                                style="width:100%;">
+                            Crear cuenta
+                        </button>
+
+                    </form>
+
+
+                    <div class="form-footer">
+
+                        ¿Ya tienes una cuenta?
+
+                        <button id="register-login"
+                                class="link-button">
+                            Inicia sesión
+                        </button>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- ==================================
+             DASHBOARD
+        ================================== -->
+
+        <section id="dashboard-view"
+                 class="view">
+
+            <div class="dashboard">
+
+
+                <div class="dashboard-header">
+
+                    <div>
+
+                        <h1>
+                            Panel de control
+                        </h1>
+
+                        <p>
+                            Gestiona los usuarios
+                            registrados en la aplicación.
+                        </p>
+
+                    </div>
+
+
+                    <button id="dashboard-logout"
+                            class="btn btn-danger">
+                        Cerrar sesión
+                    </button>
+
+                </div>
+
+
+                <div class="dashboard-section">
+
+                    <h2>
+                        Usuarios registrados
+                    </h2>
+
+
+                    <!--
+                        ESTE ES EL CONTENEDOR
+                        QUE TE COMENTABA
+                    -->
+
+                    <div id="users-container">
+
+                        <div class="loading">
+                            Cargando usuarios...
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+    </main>
+
+
+    <!-- ==================================
+         ALERTAS
+    ================================== -->
+
+    <div id="alert-container"></div>
+
+
+    <!-- ==================================
+         JAVASCRIPT
+    ================================== -->
+
+    <script type="module"
+            src="/js/app.js"></script>
+
+
+</body>
+
+</html>
