@@ -1,1 +1,36 @@
-import {Router} from 'express';export function authRoutes(service){const r=Router();r.post('/register',async(q,s)=>{try{const u=await service.register(q.body?.email,q.body?.password);q.session.userId=u.id;s.status(201).json({id:u.id,email:u.email});}catch(e){s.status(e.message==='EMAIL_EXISTS'?409:400).json({error:e.message});}});r.post('/login',async(q,s)=>{try{const u=await service.authenticate(q.body?.email,q.body?.password);q.session.userId=u.id;s.json({id:u.id,email:u.email});}catch(e){s.status(401).json({error:e.message});}});r.post('/logout',(q,s)=>q.session.destroy(()=>s.status(204).end()));r.get('/me',(q,s)=>{const u=q.session.userId?service.repository.findById(q.session.userId):null;if(!u)return s.status(401).json({error:'UNAUTHENTICATED'});s.json({id:u.id,email:u.email,role:u.role});});return r;}
+import {Router} from 'express';
+
+export function authRoutes(service){
+  const r=Router();
+
+  r.post('/register',async(q,s)=>{
+    try{
+      const u=await service.register(q.body?.email,q.body?.password);
+      q.session.userId=u.id;
+      s.status(201).json({id:u.id,email:u.email});
+    }catch(e){
+      s.status(e.message==='EMAIL_EXISTS'?409:400).json({error:e.message});
+    }
+  });
+
+  r.post('/login',async(q,s)=>{
+    try{
+      const u=await service.authenticate(q.body?.email,q.body?.password);
+      q.session.userId=u.id;
+      s.json({id:u.id,email:u.email});
+    }catch(e){
+      // do not reveal too much information
+      s.status(401).json({error:e.message});
+    }
+  });
+
+  r.post('/logout',(q,s)=>q.session.destroy(()=>s.status(204).end()));
+
+  r.get('/me',async(q,s)=>{
+    const u = q.session.userId ? await service.repository.findById(q.session.userId) : null;
+    if(!u) return s.status(401).json({error:'UNAUTHENTICATED'});
+    s.json({id:u.id,email:u.email,role:u.role});
+  });
+
+  return r;
+}

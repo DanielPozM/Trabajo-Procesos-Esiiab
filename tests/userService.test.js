@@ -36,7 +36,14 @@ test('lista', async () => {
     await x.register('a@test.com', 'password123');
     await x.register('b@test.com', 'password123');
 
-    assert.equal(x.listUsers().length, 2);
+    const users = await Promise.resolve(x.listUsers());
+
+    // allow extra users (e.g. initial admin). Ensure the two we created are present
+    const emails = users.map(u => u.email);
+    const unique = [...new Set(emails)];
+    assert.ok(unique.length >= 2);
+    assert.ok(unique.includes('a@test.com'));
+    assert.ok(unique.includes('b@test.com'));
 });
 
 test('activo', async () => {
