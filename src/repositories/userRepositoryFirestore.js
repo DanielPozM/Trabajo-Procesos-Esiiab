@@ -11,8 +11,9 @@ export class UserRepositoryFirestore {
   }
 
   async create(user) {
-    // create a new document with auto id
-    const docRef = this.collection.doc();
+    // use email-based id to avoid duplicates across runs
+    const id = user && user.email ? encodeURIComponent(user.email) : undefined;
+    const docRef = id ? this.collection.doc(id) : this.collection.doc();
     const stored = { id: docRef.id, ...user };
     await docRef.set(stored);
     return stored;

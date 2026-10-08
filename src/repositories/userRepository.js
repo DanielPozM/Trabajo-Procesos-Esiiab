@@ -44,6 +44,11 @@ export class UserRepository {
   }
 
   create(user) {
+    // prevent duplicate by email
+    if (user && user.email) {
+      const existing = this.findByEmail(user.email);
+      if (existing) return existing;
+    }
     const stored = { id: String(this.nextId++), ...user };
     this.users.set(stored.id, stored);
     this._persist();
