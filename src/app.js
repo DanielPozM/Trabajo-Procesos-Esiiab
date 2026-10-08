@@ -1,0 +1,3 @@
+import express from 'express';import session from 'express-session';import {UserRepository} from './repositories/userRepository.js';import {UserService} from './services/userService.js';import {userRoutes} from './api/userRoutes.js';
+export const repository=new UserRepository();export const service=new UserService(repository);export const app=express();
+app.use(express.json());app.use(session({secret:process.env.SESSION_SECRET||'development-only',resave:false,saveUninitialized:false}));app.use(express.static('public'));app.use('/api/users',userRoutes(service));app.get('/api/health',(_q,s)=>s.json({ok:true}));
