@@ -1,0 +1,12 @@
+{
+  "nextId": 2,
+  "users": {
+    "1": {
+      "id": "1",
+      "email": "a@test.com",
+      "passwordHash": "$2a$10$Cail6FbxQDnak/tcEe6I.uDliNwPlkazZazDEOLk.lf6RFhrFl4LG",
+      "active": true,
+      "role": "user"
+    }
+  }
+}

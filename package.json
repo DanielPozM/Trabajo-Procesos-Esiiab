@@ -1,1 +1,1 @@
-{"name":"sprint1-saas","version":"1.0.0","private":true,"type":"module","scripts":{"start":"node src/server.js","test":"node --test"},"dependencies":{"express":"^4.21.2","bcryptjs":"^2.4.3","express-session":"^1.18.1"}}
+{"name":"sprint1-saas","version":"1.0.0","private":true,"type":"module","scripts":{"start":"node src/server.js","test":"node --test"},"dependencies":{"express":"^4.21.2","bcryptjs":"^2.4.3","express-session":"^1.18.1","@google-cloud/firestore":"^6.6.0"}}
