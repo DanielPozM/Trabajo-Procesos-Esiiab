@@ -24,3 +24,7 @@ Arquitectura: public -> apiClient -> API -> servicios -> repositorio.
 
 Ejecutar: npm install; npm test; npm start.
 Variables: PORT y SESSION_SECRET.
+
+# Sprint 1 - Hito 3
+
+Cambios realizados para añadir administrador y usuario normal. El administrador es dpm@gmail.com y su contraseña es 123456789. Se diferencian en que solo el administrador pude ver los usuarios activos.
