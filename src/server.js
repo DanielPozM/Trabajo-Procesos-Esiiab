@@ -14,16 +14,11 @@ try{
 }catch(e){/* ignore */}
 
 (async ()=>{
-  // Start listening immediately so the container becomes healthy quickly.
-  app.listen(port,()=>console.log(`Server listening on ${port}`));
-
-  // Perform initialization asynchronously so it does not block the process from
-  // accepting connections (prevents Cloud Run health-check timeouts).
   try{
-    if (service && typeof service.init === 'function') {
-      service.init().then(() => console.log('Service init completed')).catch(e => console.error('Error during service init', e));
-    }
+    if (service && typeof service.init === 'function') await service.init();
   }catch(e){
-    console.error('Error scheduling service init', e);
+    console.error('Error during service init', e);
   }
+
+  app.listen(port,()=>console.log(`Server listening on ${port}`));
 })();
