@@ -4,10 +4,13 @@ import { Firestore } from '@google-cloud/firestore';
 // as the file-based/in-memory repository used elsewhere in the project.
 export class UserRepositoryFirestore {
   constructor() {
-    // Firestore client will pick credentials from
-    // GOOGLE_APPLICATION_CREDENTIALS env var or default application creds.
+    // Firestore client will pick credentials from GOOGLE_APPLICATION_CREDENTIALS
+    // env var or default application creds. Collection name can be set via
+    // FIRESTORE_COLLECTION environment variable (defaults to 'users').
     this.client = new Firestore();
-    this.collection = this.client.collection('users');
+    const collectionName = process.env.FIRESTORE_COLLECTION || 'users';
+    this.collectionName = collectionName;
+    this.collection = this.client.collection(collectionName);
   }
 
   async create(user) {
@@ -31,6 +34,12 @@ export class UserRepositoryFirestore {
 
   async findByEmail(email) {
     if (!email) return null;
+    // try direct lookup by encoded email id (faster and avoids indexes)
+    const id = encodeURIComponent(email);
+    const doc = await this.collection.doc(id).get();
+    if (doc.exists) return doc.data();
+
+    // fallback to querying by email field
     const q = await this.collection.where('email', '==', email).limit(1).get();
     if (q.empty) return null;
     return q.docs[0].data();
