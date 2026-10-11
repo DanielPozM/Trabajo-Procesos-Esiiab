@@ -7,8 +7,9 @@ function log(...args){
 export class UserService{
   constructor(repository){
     this.repository=repository;
-    // try to create initial admin asynchronously (do not block constructor)
-    this._ensureInitialAdmin();
+    // do not auto-create initial admin in constructor to avoid Firestore calls
+    // during container startup. Use scripts/reset_admin.js or call init()
+    // explicitly when you want to create the initial admin.
   }
 
   async _ensureInitialAdmin(){

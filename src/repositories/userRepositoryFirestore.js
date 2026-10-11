@@ -5,9 +5,17 @@ import { Firestore } from '@google-cloud/firestore';
 export class UserRepositoryFirestore {
   constructor() {
     // Firestore client will pick credentials from GOOGLE_APPLICATION_CREDENTIALS
-    // env var or default application creds. Collection name can be set via
-    // FIRESTORE_COLLECTION environment variable (defaults to 'users').
-    this.client = new Firestore();
+    // env var or default application creds. To avoid NOT_FOUND errors when the
+    // environment doesn't provide a project id, prefer an explicit project id
+    // from env vars or fall back to the current project.
+    const projectId = process.env.GOOGLE_CLOUD_PROJECT || process.env.GCP_PROJECT || process.env.PROJECT_ID || process.env.PROJECT || process.env.npm_config_project || undefined;
+    try {
+      this.client = projectId ? new Firestore({ projectId }) : new Firestore();
+    } catch (e) {
+      // ensure constructor never throws — log and rethrow to help debugging
+      console.error('Firestore client init error', e && e.message ? e.message : e);
+      this.client = new Firestore();
+    }
     const collectionName = process.env.FIRESTORE_COLLECTION || 'users';
     this.collectionName = collectionName;
     this.collection = this.client.collection(collectionName);
