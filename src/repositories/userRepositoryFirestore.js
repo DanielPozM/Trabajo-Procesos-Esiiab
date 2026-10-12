@@ -50,6 +50,12 @@ export class UserRepositoryFirestore {
         const stored = { id: docRef.id, ...user };
 
         await docRef.set(stored);
+        console.log('User saved to Firestore', {
+            projectId: this.client.projectId,
+            databaseId: process.env.FIRESTORE_DATABASE_ID || '(default)',
+            collection: this.collectionName,
+            documentId: docRef.id
+        });
         return stored;
     }
 
