@@ -29,7 +29,7 @@ Arquitectura: public -> apiClient -> API -> servicios -> repositorio.
 Ejecutar: npm install; npm test; node src/server.js.
 Variables: PORT y SESSION_SECRET.
 
-
 # Sprint 1 - Hito 3
+
 Incluye el Hito 2 y añade persistencia de datos en Firestore, validación de datos, manejo de errores y logging. Subida a la nube y despliegue continuo. Url pública: https://trabajoprocesosdmp-154093406430.europe-west1.run.appnp
 Oculta los usuarios al resto de usuarios. El administrador puede ver todos los usuarios y eliminarlos. Los usuarios pueden ver y eliminar sus propios datos.
