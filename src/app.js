@@ -26,18 +26,24 @@ app.use(
 );
 
 let repository;
-try {
-  if (process.env.DB_TYPE === 'firestore' || process.env.FIRESTORE_COLLECTION) {
-    console.log('Using Firestore repository, collection=', process.env.FIRESTORE_COLLECTION || 'users');
+
+if (
+    process.env.NODE_ENV === 'production' ||
+    process.env.DB_TYPE === 'firestore' ||
+    process.env.FIRESTORE_COLLECTION
+) {
+    console.log('Initializing Firestore repository');
+
+    // Si Firestore falla, queremos detectar el error,
+    // no guardar usuarios en memoria por accidente.
     repository = new UserRepositoryFirestore();
-  } else {
-    console.log('Using file/in-memory repository, DB_FILE=', process.env.DB_FILE || ':memory:');
+} else {
+    console.log(
+        'Using local repository, DB_FILE=',
+        process.env.DB_FILE || ':memory:'
+    );
+
     repository = new UserRepository(process.env.DB_FILE);
-  }
-} catch (e) {
-  console.error('Error initializing repository', e);
-  // fall back to in-memory repository to keep the server running
-  repository = new UserRepository(':memory:');
 }
 
 export const service = new UserService(repository);
