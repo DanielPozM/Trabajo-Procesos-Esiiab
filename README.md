@@ -29,11 +29,13 @@ Navegador
           │  HTTP/JSON (mismo origen)
           ▼
 API HTTP: src/api/authRoutes.js, src/api/userRoutes.js,
-          src/api/matchmakingRoutes.js
+          src/api/matchmakingRoutes.js, src/api/gameRoutes.js
           │
           ▼
 Lógica de negocio: src/services/userService.js
                    src/services/matchmakingService.js
+                   src/services/gameService.js
+                   src/services/liarsDice.js (motor puro del juego)
           │
           ▼
 Acceso a datos: src/repositories/userRepository.js
@@ -120,7 +122,24 @@ Las pruebas son unitarias, automatizadas y se ejecutan con un único comando. Cu
 - jugador que no se empareja consigo mismo;
 - salida de la cola y caducidad de entradas;
 - acceso a la partida restringido a sus jugadores;
-- respuestas de emparejamiento sin datos sensibles.
+- respuestas de emparejamiento sin datos sensibles;
+- reparto de cuatro dados por jugador y turno inicial;
+- turnos, apuestas válidas y apuestas rechazadas;
+- acusación con apuesta verdadera y con apuesta falsa;
+- pérdida de un dado por ronda y fin de partida al quedarse sin dados;
+- vista privada que oculta los dados del rival;
+- apertura simultánea de la mesa por ambos jugadores;
+- acciones inválidas que no modifican la partida.
+
+## Reglas del dado mentiroso
+
+- Cada jugador empieza con **4 dados de 6 caras**; solo ve los suyos.
+- El primer turno de la partida es aleatorio. En las rondas siguientes empieza el ganador de la ronda anterior.
+- En cada turno se puede **subir la apuesta** (cantidad y cara) o **acusar de mentira**.
+- Una apuesta es válida si sube la cantidad, o mantiene la cantidad y sube la cara. La cantidad nunca puede superar el total de dados en juego.
+- Al acusar se revelan ambas manos. Si hay **menos dados** de la cara apostada que la cantidad indicada, pierde un dado quien apostó; en caso contrario, pierde un dado quien acusó.
+- La partida termina cuando un jugador se queda sin dados; gana el otro.
+- Toda la lógica vive en el servidor: el navegador nunca recibe los dados del rival antes de una acusación.
 
 ## Variables de entorno
 
@@ -211,6 +230,9 @@ El script actualiza la contraseña, activa la cuenta y le asigna el rol `admin`.
 | `GET` | `/api/matchmaking/status` | Autenticado | Consulta si el jugador espera o ya tiene partida. |
 | `POST` | `/api/matchmaking/leave` | Autenticado | Sale de la cola de espera. |
 | `GET` | `/api/matchmaking/matches/:id` | Jugadores de la partida | Consulta una partida concreta. |
+| `GET` | `/api/matches/:id` | Jugadores de la partida | Estado privado de la partida (dados propios). |
+| `POST` | `/api/matches/:id/bids` | Jugador con el turno | Registra una apuesta `{ quantity, face }`. |
+| `POST` | `/api/matches/:id/challenge` | Jugador con el turno | Acusa de mentira y resuelve la ronda. |
 
 Estados de cuenta:
 
@@ -230,6 +252,9 @@ Los errores de negocio se devuelven como `{ "error": "CODIGO" }` y el frontend l
 - `state` en OAuth para prevenir CSRF.
 - Secretos fuera del repositorio; `.env.example` solo contiene nombres.
 - Listados y respuestas `me` sin `passwordHash` ni tokens.
+- Los dados del rival no se envían al navegador hasta que se revelan en una acusación.
+- Acciones de juego validadas en el servidor (turno, apuesta y propiedad de la partida).
+- Control optimista de versión para que dos jugadores no pisen la misma jugada.
 - Límite de tamaño del cuerpo JSON y respuestas de error sin trazas internas.
 
 ## Integración y despliegue continuo

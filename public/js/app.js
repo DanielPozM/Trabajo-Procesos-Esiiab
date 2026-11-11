@@ -41,6 +41,14 @@ const ERROR_MESSAGES = {
     PAYLOAD_TOO_LARGE: 'La petición es demasiado grande.',
     NOT_FOUND: 'Recurso no encontrado.',
     MATCH_NOT_FOUND: 'La partida no existe o ya ha terminado.',
+    MATCH_VERSION_CONFLICT:
+        'La partida ha cambiado. Se ha actualizado la mesa.',
+    GAME_FINISHED: 'La partida ya ha terminado.',
+    NOT_YOUR_TURN: 'No es tu turno.',
+    BID_QUANTITY_INVALID: 'La cantidad de dados no es válida.',
+    BID_FACE_INVALID: 'La cara del dado no es válida.',
+    BID_TOO_LOW: 'Tu apuesta debe ser mayor que la anterior.',
+    CANNOT_CHALLENGE: 'Todavía no hay ninguna apuesta que acusar.',
     INTERNAL_ERROR: 'Ha ocurrido un error inesperado. Inténtalo de nuevo.'
 };
 
@@ -221,9 +229,21 @@ document
     .getElementById('matchmaking-cancel')
     .addEventListener('click', cancelMatchmaking);
 
-document.getElementById('game-leave').addEventListener('click', () => {
-    if (currentUser) showDashboard(currentUser);
-});
+document.getElementById('game-leave').addEventListener('click', leaveGame);
+
+document
+    .getElementById('bid-submit')
+    .addEventListener('click', submitBid);
+
+document
+    .getElementById('challenge-button')
+    .addEventListener('click', callChallenge);
+
+document
+    .getElementById('bid-quantity')
+    .addEventListener('keydown', event => {
+        if (event.key === 'Enter') submitBid();
+    });
 
 // ========================================
 // LOGIN
@@ -353,6 +373,7 @@ document
 
 async function logout() {
     stopMatchmakingPolling();
+    stopGamePolling();
 
     try {
         await apiClient.logout();
@@ -382,6 +403,7 @@ document
 async function showDashboard(user) {
     currentUser = user;
     stopMatchmakingPolling();
+    stopGamePolling();
 
     showView(dashboardView);
     updateHeader(user);
@@ -628,48 +650,580 @@ function scheduleMatchmakingPoll(delay = MATCHMAKING_POLL_MS) {
     }, delay);
 }
 
-function showGame(match) {
+// ========================================
+// PARTIDA
+// ========================================
+
+const GAME_POLL_MS = 2000;
+
+let gameTimer = null;
+let gameActive = false;
+let currentMatchId = null;
+let currentGameState = null;
+let lastBidKey = null;
+
+function stopGamePolling() {
+    gameActive = false;
+
+    if (gameTimer) {
+        clearTimeout(gameTimer);
+        gameTimer = null;
+    }
+}
+
+function scheduleGamePoll(delay = GAME_POLL_MS) {
+    if (!gameActive) return;
+
+    if (gameTimer) {
+        clearTimeout(gameTimer);
+    }
+
+    gameTimer = setTimeout(() => {
+        gameTimer = null;
+        pollGame();
+    }, delay);
+}
+
+function playerName(state, userId) {
+    const player = (state?.players || []).find(
+        item => String(item.userId) === String(userId)
+    );
+
+    return player?.displayName || player?.email || 'Jugador';
+}
+
+function diceHtml(values) {
+    return values
+        .map(value => `<div class="die">${escapeHtml(value)}</div>`)
+        .join('');
+}
+
+function hiddenDiceHtml(count) {
+    return Array.from(
+        { length: count },
+        () => '<div class="die hidden">?</div>'
+    ).join('');
+}
+
+function seatHtml(player, { showDice }) {
+    const dice = showDice
+        ? diceHtml(player.dice || [])
+        : hiddenDiceHtml(player.diceCount || 0);
+
+    const count = player.diceCount || 0;
+
+    return `
+        <div class="seat-header">
+
+            <div>
+
+                <div class="seat-name">
+                    ${escapeHtml(
+                        player.displayName || player.email || 'Jugador'
+                    )}
+                </div>
+
+                <div class="seat-meta">
+                    ${count} ${count === 1 ? 'dado' : 'dados'}
+                </div>
+
+            </div>
+
+            ${
+                player.isTurn
+                    ? '<span class="badge badge-status badge-active">Turno</span>'
+                    : ''
+            }
+
+        </div>
+
+        <div class="seat-dice">
+            ${dice || '<span class="seat-meta">Sin dados</span>'}
+        </div>
+    `;
+}
+
+function renderBid(state) {
+    const element = document.getElementById('game-current-bid');
+    if (!element) return;
+
+    const bid = state.currentBid;
+
+    if (!bid) {
+        element.classList.add('empty');
+        element.textContent = 'Todavía no hay apuesta.';
+        return;
+    }
+
+    element.classList.remove('empty');
+    element.innerHTML = `
+        Apuesta actual:
+        <strong>${bid.quantity} × ${bid.face}</strong>
+        <span class="seat-meta">
+            de ${escapeHtml(playerName(state, bid.playerId))}
+        </span>
+    `;
+}
+
+function renderTurn(state) {
+    const element = document.getElementById('game-turn');
+    if (!element) return;
+
+    element.classList.toggle('is-yours', Boolean(state.canBid));
+
+    if (state.status === 'finished') {
+        element.textContent = 'Partida terminada.';
+    } else if (state.canBid) {
+        element.textContent = 'Es tu turno.';
+    } else {
+        element.textContent = `Turno de ${playerName(
+            state,
+            state.turnPlayerId
+        )}.`;
+    }
+}
+
+function renderResult(state) {
+    const element = document.getElementById('game-result');
+    if (!element) return;
+
+    if (state.status !== 'finished' || !state.winnerId) {
+        element.hidden = true;
+        element.className = 'game-result';
+        element.innerHTML = '';
+        return;
+    }
+
+    const winner = (state.players || []).find(
+        player => String(player.userId) === String(state.winnerId)
+    );
+    const youWin = Boolean(winner?.isYou);
+    const result = state.lastResult;
+
+    const detail = result
+        ? ` La última apuesta era <strong>${result.bid.quantity} × ${
+              result.bid.face
+          }</strong> y había <strong>${result.matchingCount}</strong> ${
+              result.matchingCount === 1 ? 'dado' : 'dados'
+          } con esa cara.`
+        : '';
+
+    element.hidden = false;
+    element.className = `game-result ${youWin ? 'win' : 'lose'}`;
+    element.innerHTML = `
+        <h2>${youWin ? '¡Has ganado la partida!' : 'Has perdido la partida'}</h2>
+        <p>${
+            youWin
+                ? 'Tu rival se ha quedado sin dados.'
+                : 'Te has quedado sin dados.'
+        }${detail}</p>
+    `;
+}
+
+function renderReveal(state) {
+    const element = document.getElementById('game-reveal');
+    if (!element) return;
+
+    const result = state.lastResult;
+
+    if (!result || !result.hands) {
+        element.hidden = true;
+        element.innerHTML = '';
+        return;
+    }
+
+    const bidder = escapeHtml(playerName(state, result.bidderId));
+    const challenger = escapeHtml(
+        playerName(state, result.challengerId)
+    );
+    const loser = escapeHtml(playerName(state, result.loserId));
+
+    const hands = Object.entries(result.hands)
+        .map(
+            ([userId, dice]) => `
+                <div class="reveal-hand">
+                    <span class="seat-meta">
+                        ${escapeHtml(playerName(state, userId))}
+                    </span>
+                    <div class="seat-dice">
+                        ${diceHtml(dice)}
+                    </div>
+                </div>
+            `
+        )
+        .join('');
+
+    element.hidden = false;
+    element.innerHTML = `
+        <h2>Ronda ${result.round}: dados revelados</h2>
+        <p>
+            ${bidder} apostó
+            <strong>${result.bid.quantity} × ${result.bid.face}</strong>
+            y ${challenger} acusó de mentira. Había
+            <strong>${result.matchingCount}</strong>
+            ${result.matchingCount === 1 ? 'dado' : 'dados'} con esa
+            cara: la apuesta era
+            <strong>${result.bidIsTrue ? 'verdadera' : 'falsa'}</strong>.
+            <span class="log-loss">${loser} pierde un dado.</span>
+        </p>
+
+        <div class="reveal-hands">
+            ${hands}
+        </div>
+    `;
+}
+
+function renderLog(state) {
+    const element = document.getElementById('game-log');
+    if (!element) return;
+
+    const items = (state.history || []).map(entry => {
+        const name = escapeHtml(playerName(state, entry.playerId));
+        const date = entry.at ? new Date(entry.at) : null;
+        const time =
+            date && !Number.isNaN(date.getTime())
+                ? date.toLocaleTimeString('es-ES', {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      second: '2-digit'
+                  })
+                : '';
+
+        if (entry.type === 'bid') {
+            return `
+                <li>
+                    <strong>Ronda ${entry.round}</strong> ·
+                    ${name} apuesta
+                    <strong>${entry.quantity} × ${entry.face}</strong>.
+                    <span class="seat-meta">${time}</span>
+                </li>
+            `;
+        }
+
+        if (entry.type === 'challenge') {
+            const loser = escapeHtml(playerName(state, entry.loserId));
+            const detail = entry.bidIsTrue
+                ? `La apuesta era verdadera: había ${entry.matchingCount} dados con cara ${entry.face}.`
+                : `La apuesta era falsa: solo había ${entry.matchingCount} dados con cara ${entry.face}.`;
+
+            return `
+                <li>
+                    <strong>Ronda ${entry.round}</strong> ·
+                    ${name} acusa mentira
+                    (${entry.quantity} × ${entry.face}).
+                    ${detail}
+                    <span class="log-loss">${loser} pierde un dado.</span>
+                    <span class="seat-meta">${time}</span>
+                </li>
+            `;
+        }
+
+        if (entry.type === 'gameOver') {
+            const winner = escapeHtml(
+                playerName(state, entry.winnerId)
+            );
+
+            return `
+                <li>
+                    <strong>Fin</strong> ·
+                    <span class="log-win">${winner} gana la partida.</span>
+                </li>
+            `;
+        }
+
+        return '';
+    });
+
+    element.innerHTML =
+        items.join('') || '<li>Todavía no hay jugadas.</li>';
+}
+
+function updateControls(state) {
+    const bidSubmit = document.getElementById('bid-submit');
+    const challengeButton = document.getElementById('challenge-button');
+    const quantityInput = document.getElementById('bid-quantity');
+    const faceSelect = document.getElementById('bid-face');
+    const hint = document.getElementById('game-hint');
+
+    const canBid = Boolean(state?.canBid);
+    const canChallenge = Boolean(state?.canChallenge);
+
+    if (bidSubmit) bidSubmit.disabled = !canBid;
+    if (challengeButton) challengeButton.disabled = !canChallenge;
+    if (quantityInput) {
+        quantityInput.disabled = !canBid;
+        quantityInput.max = String(state?.totalDice || 1);
+    }
+    if (faceSelect) faceSelect.disabled = !canBid;
+
+    if (!hint) return;
+
+    if (state?.status === 'finished') {
+        hint.textContent =
+            'La partida ha terminado. Vuelve al panel para buscar otra.';
+        return;
+    }
+
+    if (!canBid) {
+        hint.textContent = 'Esperando la jugada de tu rival...';
+        return;
+    }
+
+    if (state.currentBid) {
+        hint.textContent =
+            `Tu apuesta debe superar ${state.currentBid.quantity} × ${state.currentBid.face}. ` +
+            'Sube la cantidad o, con la misma cantidad, la cara. ' +
+            'Si crees que miente, pulsa "¡Mentira!".';
+        return;
+    }
+
+    hint.textContent =
+        'Abre la ronda con una apuesta. Después podrás subirla o acusar de mentira.';
+}
+
+function syncBidInputs(state) {
+    if (!state?.canBid) return;
+
+    const bid = state.currentBid;
+    const key = `${state.round}:${state.turnPlayerId}:${
+        bid ? `${bid.quantity}x${bid.face}` : 'none'
+    }`;
+
+    if (key === lastBidKey) return;
+
+    lastBidKey = key;
+
+    const minimum = state.minimumBid || { quantity: 1, face: 1 };
+    const quantityInput = document.getElementById('bid-quantity');
+    const faceSelect = document.getElementById('bid-face');
+
+    if (quantityInput) {
+        quantityInput.value = String(minimum.quantity);
+    }
+
+    if (faceSelect) {
+        faceSelect.value = String(minimum.face);
+    }
+}
+
+function renderGame(state) {
+    currentGameState = state;
+
+    const self =
+        (state.players || []).find(player => player.isYou) || {};
+    const opponent =
+        (state.players || []).find(player => !player.isYou) || {};
+
+    const selfSeat = document.getElementById('game-self');
+    const opponentSeat = document.getElementById('game-opponent');
+
+    if (selfSeat) {
+        selfSeat.innerHTML = seatHtml(self, { showDice: true });
+        selfSeat.classList.toggle('is-turn', Boolean(self.isTurn));
+    }
+
+    if (opponentSeat) {
+        opponentSeat.innerHTML = seatHtml(opponent, {
+            showDice: false
+        });
+        opponentSeat.classList.toggle(
+            'is-turn',
+            Boolean(opponent.isTurn)
+        );
+    }
+
+    const kicker = document.getElementById('game-kicker');
+    if (kicker) kicker.textContent = `Ronda ${state.round}`;
+
+    renderBid(state);
+    renderTurn(state);
+    renderResult(state);
+    renderReveal(state);
+    renderLog(state);
+    updateControls(state);
+    syncBidInputs(state);
+
+    if (state.status === 'finished') {
+        stopGamePolling();
+    }
+}
+
+async function showGame(match) {
     stopMatchmakingPolling();
+    stopGamePolling();
+
+    currentMatchId = match?.id || null;
+    currentGameState = null;
+    lastBidKey = null;
+    gameActive = true;
 
     showView(gameView);
 
-    const players = match?.players || [];
+    const kicker = document.getElementById('game-kicker');
+    if (kicker) kicker.textContent = 'Cargando mesa...';
 
-    const self = players.find(
-        player => String(player.userId) === String(currentUser?.id)
-    );
-    const opponent = players.find(
-        player => String(player.userId) !== String(currentUser?.id)
-    );
+    const turn = document.getElementById('game-turn');
+    if (turn) turn.textContent = 'Preparando los dados...';
 
-    const playersContainer = document.getElementById('game-players');
-    const diceContainer = document.getElementById('game-dice');
+    if (!currentMatchId) {
+        stopGamePolling();
 
-    if (playersContainer) {
-        playersContainer.innerHTML = `
-            <div class="game-player">
-                <span class="game-player-role">Tú</span>
-                <strong>${escapeHtml(
-                    self?.displayName || currentUser?.email || 'Jugador'
-                )}</strong>
-            </div>
+        if (currentUser) {
+            await showDashboard(currentUser);
+        }
 
-            <div class="game-player">
-                <span class="game-player-role">Oponente</span>
-                <strong>${escapeHtml(
-                    opponent?.displayName ||
-                        opponent?.email ||
-                        'Jugador'
-                )}</strong>
-            </div>
-        `;
+        showAlert('No se pudo abrir la partida.', 'error');
+        return;
     }
 
-    if (diceContainer) {
-        diceContainer.innerHTML = Array.from(
-            { length: 4 },
-            () => '<div class="die">?</div>'
-        ).join('');
+    try {
+        const state = await apiClient.getGame(currentMatchId);
+
+        if (!gameActive || !currentMatchId) return;
+
+        renderGame(state);
+        scheduleGamePoll();
+    } catch (error) {
+        console.error(error);
+        stopGamePolling();
+
+        if (currentUser) {
+            await showDashboard(currentUser);
+        }
+
+        showAlert(messageFor(error), 'error');
+    }
+}
+
+async function pollGame() {
+    if (!gameActive || !currentMatchId) return;
+
+    try {
+        const state = await apiClient.getGame(currentMatchId);
+
+        if (!gameActive || !currentMatchId) return;
+
+        renderGame(state);
+
+        if (state.status !== 'finished') {
+            scheduleGamePoll();
+        }
+    } catch (error) {
+        console.error(error);
+
+        if (!gameActive) return;
+
+        if (error.code === 'UNAUTHENTICATED') {
+            stopGamePolling();
+            currentUser = null;
+            headerUsername.textContent = '';
+            showView(welcomeView);
+            showAlert(messageFor(error), 'error');
+            return;
+        }
+
+        if (
+            error.code === 'MATCH_NOT_FOUND' ||
+            error.code === 'FORBIDDEN'
+        ) {
+            stopGamePolling();
+            currentMatchId = null;
+
+            if (currentUser) {
+                await showDashboard(currentUser);
+            }
+
+            showAlert(messageFor(error), 'error');
+            return;
+        }
+
+        scheduleGamePoll(3000);
+    }
+}
+
+async function handleGameActionError(error) {
+    console.error(error);
+
+    const syncCodes = [
+        'NOT_YOUR_TURN',
+        'BID_TOO_LOW',
+        'MATCH_VERSION_CONFLICT',
+        'GAME_FINISHED'
+    ];
+
+    if (syncCodes.includes(error.code) && currentMatchId) {
+        try {
+            const state = await apiClient.getGame(currentMatchId);
+            renderGame(state);
+            return;
+        } catch (refreshError) {
+            console.error(refreshError);
+        }
+    }
+
+    showAlert(messageFor(error), 'error');
+}
+
+async function submitBid() {
+    if (!currentMatchId || !currentGameState?.canBid) return;
+
+    const quantityInput = document.getElementById('bid-quantity');
+    const faceSelect = document.getElementById('bid-face');
+    const button = document.getElementById('bid-submit');
+
+    const quantity = Number(quantityInput?.value);
+    const face = Number(faceSelect?.value);
+
+    if (!Number.isInteger(quantity) || quantity < 1) {
+        showAlert('Indica una cantidad válida.', 'error');
+        return;
+    }
+
+    setBusy(button, true, 'Apostando...');
+
+    try {
+        const state = await apiClient.placeBid(
+            currentMatchId,
+            quantity,
+            face
+        );
+
+        renderGame(state);
+    } catch (error) {
+        await handleGameActionError(error);
+    } finally {
+        setBusy(button, false);
+        updateControls(currentGameState);
+    }
+}
+
+async function callChallenge() {
+    if (!currentMatchId || !currentGameState?.canChallenge) return;
+
+    const button = document.getElementById('challenge-button');
+    setBusy(button, true, 'Acusando...');
+
+    try {
+        const state = await apiClient.challenge(currentMatchId);
+
+        renderGame(state);
+    } catch (error) {
+        await handleGameActionError(error);
+    } finally {
+        setBusy(button, false);
+        updateControls(currentGameState);
+    }
+}
+
+function leaveGame() {
+    stopGamePolling();
+
+    currentMatchId = null;
+    currentGameState = null;
+    lastBidKey = null;
+
+    if (currentUser) {
+        showDashboard(currentUser);
     }
 }
 
