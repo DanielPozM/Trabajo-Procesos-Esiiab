@@ -1,17 +1,16 @@
-﻿# Minimal Dockerfile for the Node.js app
-FROM node:18-alpine
+﻿# Dockerfile para la aplicación Node.js
+FROM node:20-alpine
 
-# Create app directory
 WORKDIR /usr/src/app
 
-# Install app dependencies
+# Instala dependencias de producción usando el lockfile
 COPY package*.json ./
-RUN npm ci --only=production || npm install --production
+RUN npm ci --omit=dev
 
-# Bundle app source
+# Copia el código de la aplicación
 COPY . .
 
-# Cloud Run sets PORT via env var; default to 8080 inside container
+# Cloud Run inyecta PORT; el valor por defecto dentro del contenedor es 8080
 ENV PORT=8080
 ENV NODE_ENV=production
 
