@@ -10,8 +10,10 @@ import {
 import { authRoutes } from './api/authRoutes.js';
 import { userRoutes } from './api/userRoutes.js';
 import { matchmakingRoutes } from './api/matchmakingRoutes.js';
+import { gameRoutes } from './api/gameRoutes.js';
 import { UserService } from './services/userService.js';
 import { MatchmakingService } from './services/matchmakingService.js';
+import { GameService } from './services/gameService.js';
 import { createEmailService } from './services/emailService.js';
 import { UserRepository } from './repositories/userRepository.js';
 import { UserRepositoryFirestore } from './repositories/userRepositoryFirestore.js';
@@ -134,12 +136,15 @@ export const matchmakingService = new MatchmakingService(
     matchmakingRepository
 );
 
+export const gameService = new GameService(matchmakingRepository);
+
 app.use('/api/auth', authRoutes(service));
 app.use('/api/users', userRoutes(service));
 app.use(
     '/api/matchmaking',
     matchmakingRoutes(service, matchmakingService)
 );
+app.use('/api/matches', gameRoutes(service, gameService));
 
 app.use('/api', (req, res) => {
     res.status(404).json({ error: 'NOT_FOUND' });

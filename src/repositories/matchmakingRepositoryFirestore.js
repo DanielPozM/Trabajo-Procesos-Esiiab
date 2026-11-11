@@ -94,6 +94,7 @@ export class MatchmakingRepositoryFirestore {
                 const match = {
                     id: matchRef.id,
                     status: 'active',
+                    version: 0,
                     playerIds: [opponent.userId, entry.userId],
                     players: [
                         {
@@ -212,5 +213,45 @@ export class MatchmakingRepositoryFirestore {
     async getMatch(matchId) {
         const doc = await this.matchesCollection.doc(String(matchId)).get();
         return doc.exists ? doc.data() : null;
+    }
+
+    /**
+     * Guarda el estado de la partida dentro de una transacción. El campo
+     * `version` evita que dos acciones simultáneas se pisen entre sí.
+     */
+    async saveGame(matchId, { game, expectedVersion } = {}) {
+        const matchRef = this.matchesCollection.doc(String(matchId));
+
+        return this.client.runTransaction(async transaction => {
+            const snapshot = await transaction.get(matchRef);
+
+            if (!snapshot.exists) {
+                throw new Error('MATCH_NOT_FOUND');
+            }
+
+            const match = snapshot.data() || {};
+            const currentVersion = Number(match.version || 0);
+
+            if (
+                expectedVersion !== undefined &&
+                currentVersion !== Number(expectedVersion)
+            ) {
+                throw new Error('MATCH_VERSION_CONFLICT');
+            }
+
+            const updated = {
+                ...match,
+                game,
+                version: currentVersion + 1,
+                status:
+                    game?.status === 'finished'
+                        ? 'finished'
+                        : match.status
+            };
+
+            transaction.set(matchRef, updated);
+
+            return updated;
+        });
     }
 }
