@@ -9,10 +9,14 @@ import {
 } from './config.js';
 import { authRoutes } from './api/authRoutes.js';
 import { userRoutes } from './api/userRoutes.js';
+import { matchmakingRoutes } from './api/matchmakingRoutes.js';
 import { UserService } from './services/userService.js';
+import { MatchmakingService } from './services/matchmakingService.js';
 import { createEmailService } from './services/emailService.js';
 import { UserRepository } from './repositories/userRepository.js';
 import { UserRepositoryFirestore } from './repositories/userRepositoryFirestore.js';
+import { MatchmakingRepository } from './repositories/matchmakingRepository.js';
+import { MatchmakingRepositoryFirestore } from './repositories/matchmakingRepositoryFirestore.js';
 import { FirestoreSessionStore } from './repositories/sessionStoreFirestore.js';
 import { info, warn, error as logError } from './lib/logger.js';
 
@@ -114,8 +118,28 @@ export const service = new UserService(repository, {
     appBaseUrl: config.appBaseUrl
 });
 
+const matchmakingRepository =
+    repository instanceof UserRepositoryFirestore
+        ? new MatchmakingRepositoryFirestore({
+              client: repository.client,
+              ttlMs: config.matchmaking.ttlMs,
+              queueCollectionName: config.matchmaking.collection,
+              matchesCollectionName: config.matchmaking.matchesCollection
+          })
+        : new MatchmakingRepository({
+              ttlMs: config.matchmaking.ttlMs
+          });
+
+export const matchmakingService = new MatchmakingService(
+    matchmakingRepository
+);
+
 app.use('/api/auth', authRoutes(service));
 app.use('/api/users', userRoutes(service));
+app.use(
+    '/api/matchmaking',
+    matchmakingRoutes(service, matchmakingService)
+);
 
 app.use('/api', (req, res) => {
     res.status(404).json({ error: 'NOT_FOUND' });

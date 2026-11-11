@@ -40,6 +40,7 @@ const ERROR_MESSAGES = {
     INVALID_JSON: 'La petición no es válida.',
     PAYLOAD_TOO_LARGE: 'La petición es demasiado grande.',
     NOT_FOUND: 'Recurso no encontrado.',
+    MATCH_NOT_FOUND: 'La partida no existe o ya ha terminado.',
     INTERNAL_ERROR: 'Ha ocurrido un error inesperado. Inténtalo de nuevo.'
 };
 
@@ -56,6 +57,8 @@ const welcomeView = document.getElementById('welcome-view');
 const loginView = document.getElementById('login-view');
 const registerView = document.getElementById('register-view');
 const dashboardView = document.getElementById('dashboard-view');
+const matchmakingView = document.getElementById('matchmaking-view');
+const gameView = document.getElementById('game-view');
 
 const headerUser = document.getElementById('header-user');
 const headerUsername = document.getElementById('header-username');
@@ -84,7 +87,9 @@ function showView(view) {
         welcomeView,
         loginView,
         registerView,
-        dashboardView
+        dashboardView,
+        matchmakingView,
+        gameView
     ];
 
     views.forEach(element => {
@@ -93,8 +98,15 @@ function showView(view) {
 
     view.classList.add('active');
 
-    headerUser.style.display =
-        view === dashboardView ? 'flex' : 'none';
+    const authenticatedViews = [
+        dashboardView,
+        matchmakingView,
+        gameView
+    ];
+
+    headerUser.style.display = authenticatedViews.includes(view)
+        ? 'flex'
+        : 'none';
 }
 
 // ========================================
@@ -195,6 +207,22 @@ document.getElementById('login-register').addEventListener('click', () => {
 
 document.getElementById('register-login').addEventListener('click', () => {
     showView(loginView);
+});
+
+// ========================================
+// BOTONES DE EMPAREJAMIENTO
+// ========================================
+
+document
+    .getElementById('find-opponent')
+    .addEventListener('click', startMatchmaking);
+
+document
+    .getElementById('matchmaking-cancel')
+    .addEventListener('click', cancelMatchmaking);
+
+document.getElementById('game-leave').addEventListener('click', () => {
+    if (currentUser) showDashboard(currentUser);
 });
 
 // ========================================
@@ -324,6 +352,8 @@ document
 // ========================================
 
 async function logout() {
+    stopMatchmakingPolling();
+
     try {
         await apiClient.logout();
 
@@ -351,6 +381,7 @@ document
 
 async function showDashboard(user) {
     currentUser = user;
+    stopMatchmakingPolling();
 
     showView(dashboardView);
     updateHeader(user);
@@ -555,6 +586,193 @@ async function deleteUser(user, viewer) {
         }
 
         showAlert(messageFor(error), 'error');
+    }
+}
+
+// ========================================
+// EMPAREJAMIENTO
+// ========================================
+
+const MATCHMAKING_POLL_MS = 2000;
+
+let matchmakingTimer = null;
+let matchmakingActive = false;
+
+function stopMatchmakingPolling() {
+    matchmakingActive = false;
+
+    if (matchmakingTimer) {
+        clearTimeout(matchmakingTimer);
+        matchmakingTimer = null;
+    }
+}
+
+function setMatchmakingStatus(text) {
+    const element = document.getElementById('matchmaking-status');
+
+    if (element) {
+        element.textContent = text;
+    }
+}
+
+function scheduleMatchmakingPoll(delay = MATCHMAKING_POLL_MS) {
+    if (!matchmakingActive) return;
+
+    if (matchmakingTimer) {
+        clearTimeout(matchmakingTimer);
+    }
+
+    matchmakingTimer = setTimeout(() => {
+        matchmakingTimer = null;
+        pollMatchmaking();
+    }, delay);
+}
+
+function showGame(match) {
+    stopMatchmakingPolling();
+
+    showView(gameView);
+
+    const players = match?.players || [];
+
+    const self = players.find(
+        player => String(player.userId) === String(currentUser?.id)
+    );
+    const opponent = players.find(
+        player => String(player.userId) !== String(currentUser?.id)
+    );
+
+    const playersContainer = document.getElementById('game-players');
+    const diceContainer = document.getElementById('game-dice');
+
+    if (playersContainer) {
+        playersContainer.innerHTML = `
+            <div class="game-player">
+                <span class="game-player-role">Tú</span>
+                <strong>${escapeHtml(
+                    self?.displayName || currentUser?.email || 'Jugador'
+                )}</strong>
+            </div>
+
+            <div class="game-player">
+                <span class="game-player-role">Oponente</span>
+                <strong>${escapeHtml(
+                    opponent?.displayName ||
+                        opponent?.email ||
+                        'Jugador'
+                )}</strong>
+            </div>
+        `;
+    }
+
+    if (diceContainer) {
+        diceContainer.innerHTML = Array.from(
+            { length: 4 },
+            () => '<div class="die">?</div>'
+        ).join('');
+    }
+}
+
+function handleMatchmakingResult(result) {
+    if (!matchmakingActive) return;
+
+    if (result.status === 'matched' && result.match) {
+        showGame(result.match);
+        return;
+    }
+
+    if (result.status === 'waiting') {
+        setMatchmakingStatus(
+            'Esperando a otro jugador. La búsqueda continúa...'
+        );
+        scheduleMatchmakingPoll();
+        return;
+    }
+
+    setMatchmakingStatus('Reintentando búsqueda...');
+    scheduleMatchmakingPoll(500);
+}
+
+async function startMatchmaking() {
+    if (!currentUser) return;
+
+    stopMatchmakingPolling();
+    matchmakingActive = true;
+
+    showView(matchmakingView);
+    setMatchmakingStatus('Conectando con la cola de emparejamiento...');
+
+    try {
+        const result = await apiClient.joinMatchmaking();
+
+        if (!matchmakingActive) return;
+
+        handleMatchmakingResult(result);
+    } catch (error) {
+        console.error(error);
+
+        if (!matchmakingActive) return;
+
+        stopMatchmakingPolling();
+
+        if (currentUser) {
+            await showDashboard(currentUser);
+        }
+
+        showAlert(messageFor(error), 'error');
+    }
+}
+
+async function pollMatchmaking() {
+    if (!matchmakingActive) return;
+
+    try {
+        const result = await apiClient.getMatchmakingStatus();
+
+        if (!matchmakingActive) return;
+
+        if (result.status === 'idle') {
+            const joined = await apiClient.joinMatchmaking();
+
+            if (!matchmakingActive) return;
+
+            handleMatchmakingResult(joined);
+            return;
+        }
+
+        handleMatchmakingResult(result);
+    } catch (error) {
+        console.error(error);
+
+        if (!matchmakingActive) return;
+
+        if (error.code === 'UNAUTHENTICATED') {
+            stopMatchmakingPolling();
+            currentUser = null;
+            headerUsername.textContent = '';
+            showView(welcomeView);
+            showAlert(messageFor(error), 'error');
+            return;
+        }
+
+        setMatchmakingStatus(
+            'No se pudo comprobar la cola. Reintentando...'
+        );
+        scheduleMatchmakingPoll(3000);
+    }
+}
+
+async function cancelMatchmaking() {
+    stopMatchmakingPolling();
+
+    try {
+        await apiClient.leaveMatchmaking();
+    } catch (error) {
+        console.error(error);
+    }
+
+    if (currentUser) {
+        await showDashboard(currentUser);
     }
 }
 

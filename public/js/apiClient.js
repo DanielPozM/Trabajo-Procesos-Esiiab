@@ -104,5 +104,27 @@ export const apiClient = {
             method: 'DELETE'
         });
         return true;
+    },
+
+    // =========================
+    // EMPAREJAMIENTO
+    // =========================
+
+    joinMatchmaking() {
+        return request('/api/matchmaking/join', { method: 'POST' });
+    },
+
+    getMatchmakingStatus() {
+        return request('/api/matchmaking/status');
+    },
+
+    leaveMatchmaking() {
+        return request('/api/matchmaking/leave', { method: 'POST' });
+    },
+
+    getMatch(id) {
+        return request(
+            `/api/matchmaking/matches/${encodeURIComponent(id)}`
+        );
     }
 };
