@@ -217,7 +217,7 @@ Los errores de negocio se devuelven como `{ "error": "CODIGO" }` y el frontend l
 ## Integración y despliegue continuo
 
 - **CI:** `.github/workflows/ci.yml` ejecuta `npm ci` y `npm test` en cada push y pull request.
-- **CD:** el servicio de Cloud Run está conectado al repositorio para desplegar los cambios de `main`. Como alternativa reproducible, `scripts/deploy_cloudrun.sh` construye la imagen, guarda los secretos en Secret Manager y despliega sin incluir credenciales en el código.
+- **CD:** el servicio de Cloud Run está conectado al repositorio para desplegar los cambios de `main`. Como alternativa reproducible, `scripts/deploy_cloudrun.sh` construye la imagen, guarda los secretos en Secret Manager y despliega sin incluir credenciales en el código. El script genera `SESSION_SECRET` si no se proporciona y deduce `GOOGLE_REDIRECT_URI` a partir de `APP_BASE_URL`.
 
 El flujo de trabajo sigue GitHub Flow: rama por cambio, pruebas en local, pull request y merge a `main`.
 

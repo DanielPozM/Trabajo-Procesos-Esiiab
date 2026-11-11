@@ -3,18 +3,20 @@ set -euo pipefail
 
 # Despliegue de Cloud Run.
 # Uso (Cloud Shell, desde la raíz del repositorio):
-#   export SESSION_SECRET='...'
 #   export INIT_ADMIN_EMAIL='...'
 #   export INIT_ADMIN_PASSWORD='...'
 #   export APP_BASE_URL='https://...'
 #   export GOOGLE_CLIENT_ID='...'
 #   export GOOGLE_CLIENT_SECRET='...'
-#   export GOOGLE_REDIRECT_URI='https://.../api/auth/oauth/google/callback'
 #   export SMTP_HOST='...'
 #   export SMTP_USER='...'
 #   export SMTP_PASS='...'
 #   export MAIL_FROM='...'
 #   bash scripts/deploy_cloudrun.sh
+#
+# SESSION_SECRET y GOOGLE_REDIRECT_URI son opcionales: si no se definen, el
+# script genera un secreto aleatorio y construye la URI de retorno a partir de
+# APP_BASE_URL.
 #
 # El script no contiene credenciales. Los valores sensibles se guardan en
 # Secret Manager y se inyectan en Cloud Run como variables de entorno.
@@ -30,13 +32,11 @@ SMTP_PORT=${SMTP_PORT:-587}
 SMTP_SECURE=${SMTP_SECURE:-false}
 
 required_vars=(
-  SESSION_SECRET
   INIT_ADMIN_EMAIL
   INIT_ADMIN_PASSWORD
   APP_BASE_URL
   GOOGLE_CLIENT_ID
   GOOGLE_CLIENT_SECRET
-  GOOGLE_REDIRECT_URI
   SMTP_HOST
   SMTP_USER
   SMTP_PASS
@@ -49,6 +49,16 @@ for variable in "${required_vars[@]}"; do
     exit 1
   fi
 done
+
+if [ -z "${SESSION_SECRET:-}" ]; then
+  SESSION_SECRET=$(openssl rand -hex 32)
+  echo "SESSION_SECRET no definido: se genera uno aleatorio."
+fi
+
+if [ -z "${GOOGLE_REDIRECT_URI:-}" ]; then
+  GOOGLE_REDIRECT_URI="${APP_BASE_URL%/}/api/auth/oauth/google/callback"
+  echo "GOOGLE_REDIRECT_URI no definido: se usa ${GOOGLE_REDIRECT_URI}"
+fi
 
 echo "Proyecto: ${PROJECT}; región: ${REGION}; servicio: ${SERVICE}"
 
