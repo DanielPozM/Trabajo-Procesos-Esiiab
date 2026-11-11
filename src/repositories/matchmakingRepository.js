@@ -50,6 +50,7 @@ export class MatchmakingRepository {
         const match = {
             id,
             status: 'active',
+            version: 0,
             playerIds: entries.map(entry => entry.userId),
             players: entries.map(entry => ({
                 userId: entry.userId,
@@ -128,5 +129,33 @@ export class MatchmakingRepository {
 
     async getMatch(matchId) {
         return this.matches.get(String(matchId)) || null;
+    }
+
+    /**
+     * Guarda el estado de la partida con control optimista de concurrencia.
+     * Si dos peticiones parten de la misma versión, solo la primera gana.
+     */
+    async saveGame(matchId, { game, expectedVersion } = {}) {
+        const match = this.matches.get(String(matchId));
+
+        if (!match) {
+            throw new Error('MATCH_NOT_FOUND');
+        }
+
+        if (
+            expectedVersion !== undefined &&
+            Number(match.version || 0) !== Number(expectedVersion)
+        ) {
+            throw new Error('MATCH_VERSION_CONFLICT');
+        }
+
+        match.game = game;
+        match.version = Number(match.version || 0) + 1;
+
+        if (game?.status === 'finished') {
+            match.status = 'finished';
+        }
+
+        return match;
     }
 }

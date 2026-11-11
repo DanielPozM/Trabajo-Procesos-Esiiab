@@ -774,60 +774,6 @@
         }
 
 
-        .game-placeholder-card {
-            background: white;
-            border: 1px solid var(--border);
-            border-radius: 25px;
-            padding: 35px;
-            text-align: center;
-            box-shadow: 0 20px 60px rgba(15,23,42,.08);
-        }
-
-
-        .game-players {
-            display: flex;
-            justify-content: center;
-            gap: 20px;
-            flex-wrap: wrap;
-            margin-bottom: 30px;
-        }
-
-
-        .game-player {
-            background: #f8fafc;
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            padding: 16px 22px;
-            min-width: 190px;
-        }
-
-
-        .game-player-role {
-            display: block;
-            font-size: 11px;
-            text-transform: uppercase;
-            letter-spacing: .1em;
-            color: var(--muted);
-            margin-bottom: 6px;
-        }
-
-
-        .game-player strong {
-            display: block;
-            font-size: 16px;
-            word-break: break-all;
-        }
-
-
-        .placeholder-dice {
-            display: flex;
-            justify-content: center;
-            gap: 12px;
-            flex-wrap: wrap;
-            margin-bottom: 25px;
-        }
-
-
         .die {
             width: 54px;
             height: 54px;
@@ -844,10 +790,290 @@
         }
 
 
-        .game-note {
-            color: var(--muted);
-            line-height: 1.7;
+        .game-table {
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+            margin-bottom: 22px;
         }
+
+
+        .game-seat {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 18px 22px;
+            box-shadow: 0 10px 30px rgba(15,23,42,.05);
+            transition: border-color .2s, box-shadow .2s;
+        }
+
+
+            .game-seat.is-turn {
+                border-color: var(--primary);
+                box-shadow: 0 0 0 3px rgba(99,102,241,.15);
+            }
+
+
+        .seat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+
+        .seat-name {
+            font-weight: 700;
+            font-size: 16px;
+        }
+
+
+        .seat-meta {
+            color: var(--muted);
+            font-size: 12px;
+        }
+
+
+        .seat-dice {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+
+        .die.hidden {
+            background: linear-gradient(135deg, #334155, #1e293b);
+            color: #94a3b8;
+            border-color: #1e293b;
+        }
+
+
+        .die.small {
+            width: 40px;
+            height: 40px;
+            font-size: 18px;
+            border-radius: 9px;
+        }
+
+
+        .game-center {
+            text-align: center;
+        }
+
+
+        .current-bid {
+            background: #eef2ff;
+            border: 1px dashed #c7d2fe;
+            border-radius: 16px;
+            padding: 14px 18px;
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--primary-dark);
+        }
+
+
+            .current-bid.empty {
+                background: #f8fafc;
+                border-color: var(--border);
+                color: var(--muted);
+                font-weight: 500;
+                font-size: 15px;
+            }
+
+
+        .turn-indicator {
+            margin-top: 10px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--muted);
+        }
+
+
+            .turn-indicator.is-yours {
+                color: var(--success);
+            }
+
+
+        .game-controls {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 20px 22px;
+            box-shadow: 0 10px 30px rgba(15,23,42,.05);
+            margin-bottom: 22px;
+        }
+
+
+        .bid-controls {
+            display: flex;
+            gap: 14px;
+            align-items: flex-end;
+            flex-wrap: wrap;
+        }
+
+
+        .bid-controls label {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .08em;
+            color: var(--muted);
+        }
+
+
+        .bid-controls input,
+        .bid-controls select {
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 10px 12px;
+            font-size: 15px;
+            background: #f8fafc;
+            color: var(--text);
+            min-width: 90px;
+        }
+
+
+        .game-controls .btn-danger {
+            margin-top: 14px;
+        }
+
+
+        .game-hint {
+            margin-top: 12px;
+            color: var(--muted);
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+
+        .game-result {
+            border-radius: 20px;
+            padding: 24px 26px;
+            margin-bottom: 22px;
+            text-align: center;
+        }
+
+
+            .game-result.win {
+                background: #ecfdf5;
+                border: 1px solid #a7f3d0;
+                color: #065f46;
+            }
+
+
+            .game-result.lose {
+                background: #fef2f2;
+                border: 1px solid #fecaca;
+                color: #991b1b;
+            }
+
+
+            .game-result h2 {
+                font-size: 24px;
+                margin-bottom: 8px;
+            }
+
+
+            .game-result p {
+                line-height: 1.6;
+            }
+
+
+        .game-reveal {
+            background: #fffbeb;
+            border: 1px solid #fde68a;
+            border-radius: 20px;
+            padding: 20px 22px;
+            margin-bottom: 22px;
+        }
+
+
+            .game-reveal h2 {
+                font-size: 17px;
+                margin-bottom: 8px;
+            }
+
+
+            .game-reveal p {
+                color: var(--muted);
+                line-height: 1.6;
+                margin-bottom: 14px;
+            }
+
+
+        .reveal-hands {
+            display: flex;
+            gap: 22px;
+            flex-wrap: wrap;
+        }
+
+
+        .reveal-hand {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+
+        .game-log-card {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 20px 22px;
+            box-shadow: 0 10px 30px rgba(15,23,42,.05);
+        }
+
+
+            .game-log-card h2 {
+                font-size: 16px;
+                margin-bottom: 12px;
+            }
+
+
+        .game-log {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-height: 260px;
+            overflow-y: auto;
+            font-size: 13px;
+            color: var(--muted);
+        }
+
+
+            .game-log li {
+                border-bottom: 1px solid var(--border);
+                padding-bottom: 8px;
+                line-height: 1.5;
+            }
+
+
+            .game-log li:last-child {
+                border-bottom: none;
+                padding-bottom: 0;
+            }
+
+
+            .game-log strong {
+                color: var(--text);
+            }
+
+
+            .game-log .log-loss {
+                color: var(--danger);
+                font-weight: 600;
+            }
+
+
+            .game-log .log-win {
+                color: var(--success);
+                font-weight: 600;
+            }
 
 
         /* ==================================
@@ -1373,7 +1599,7 @@
 
 
         <!-- ==================================
-             PARTIDA (PLACEHOLDER DEL HITO 1)
+             PARTIDA
         ================================== -->
 
         <section id="game-view"
@@ -1385,7 +1611,8 @@
 
                     <div>
 
-                        <p class="game-kicker">
+                        <p id="game-kicker"
+                           class="game-kicker">
                             Partida encontrada
                         </p>
 
@@ -1405,20 +1632,103 @@
                 </div>
 
 
-                <div class="game-placeholder-card">
-
-                    <div id="game-players"
-                         class="game-players"></div>
-
-
-                    <div id="game-dice"
-                         class="placeholder-dice"></div>
+                <div id="game-result"
+                     class="game-result"
+                     hidden></div>
 
 
-                    <p class="game-note">
-                        La mesa está preparada. El juego del dado
-                        mentiroso completo llegará en el siguiente hito.
-                    </p>
+                <div id="game-reveal"
+                     class="game-reveal"
+                     hidden></div>
+
+
+                <div class="game-table">
+
+                    <div id="game-opponent"
+                         class="game-seat"></div>
+
+
+                    <div class="game-center">
+
+                        <div id="game-current-bid"
+                             class="current-bid empty">
+                            Todavía no hay apuesta.
+                        </div>
+
+
+                        <div id="game-turn"
+                             class="turn-indicator"></div>
+
+                    </div>
+
+
+                    <div id="game-self"
+                         class="game-seat"></div>
+
+                </div>
+
+
+                <div id="game-controls"
+                     class="game-controls">
+
+                    <div class="bid-controls">
+
+                        <label for="bid-quantity">
+                            Cantidad
+
+                            <input id="bid-quantity"
+                                   type="number"
+                                   min="1"
+                                   max="8"
+                                   value="1">
+                        </label>
+
+
+                        <label for="bid-face">
+                            Cara
+
+                            <select id="bid-face">
+                                <option value="1">1</option>
+                                <option value="2">2</option>
+                                <option value="3">3</option>
+                                <option value="4">4</option>
+                                <option value="5">5</option>
+                                <option value="6">6</option>
+                            </select>
+                        </label>
+
+
+                        <button id="bid-submit"
+                                class="btn btn-primary"
+                                type="button">
+                            Apostar
+                        </button>
+
+                    </div>
+
+
+                    <button id="challenge-button"
+                            class="btn btn-danger"
+                            type="button">
+                        ¡Mentira!
+                    </button>
+
+
+                    <p id="game-hint"
+                       class="game-hint"></p>
+
+                </div>
+
+
+                <div class="game-log-card">
+
+                    <h2>
+                        Historial de la partida
+                    </h2>
+
+
+                    <ol id="game-log"
+                        class="game-log"></ol>
 
                 </div>
 

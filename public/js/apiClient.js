@@ -126,5 +126,27 @@ export const apiClient = {
         return request(
             `/api/matchmaking/matches/${encodeURIComponent(id)}`
         );
+    },
+
+    // =========================
+    // PARTIDA
+    // =========================
+
+    getGame(matchId) {
+        return request(`/api/matches/${encodeURIComponent(matchId)}`);
+    },
+
+    placeBid(matchId, quantity, face) {
+        return request(
+            `/api/matches/${encodeURIComponent(matchId)}/bids`,
+            jsonOptions('POST', { quantity, face })
+        );
+    },
+
+    challenge(matchId) {
+        return request(
+            `/api/matches/${encodeURIComponent(matchId)}/challenge`,
+            { method: 'POST' }
+        );
     }
 };
