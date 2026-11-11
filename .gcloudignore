@@ -1,0 +1,30 @@
+# Archivos que no deben subirse a Cloud Build.
+# Nota: al existir .gcloudignore, gcloud no aplica .gitignore automáticamente.
+
+# Dependencias y artefactos locales
+node_modules
+npm-debug.log*
+*.log
+
+# Secretos y configuración local
+.env
+.env.*
+!.env.example
+gcloud-key.json
+*.key.json
+*.pem
+data
+
+# Control de versiones y metadatos
+.git
+.gitignore
+.github
+.vscode
+.vs
+
+# Documentación, pruebas y scripts auxiliares
+README.md
+tests
+scripts
+*.pdf
+*.txt

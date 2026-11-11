@@ -1,95 +1,400 @@
+import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 
-function log(...args){
-  if (process.env.NODE_ENV !== 'test') console.log('[UserService]',...args);
+import { config } from '../config.js';
+import { createEmailService } from './emailService.js';
+import { info, error as logError } from '../lib/logger.js';
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const MIN_PASSWORD_LENGTH = 8;
+const MAX_PASSWORD_LENGTH = 72;
+const RESEND_COOLDOWN_MS = 60 * 1000;
+
+function normalizeEmail(email) {
+    return String(email || '').trim().toLowerCase();
 }
 
-export class UserService{
-  constructor(repository){
-    this.repository=repository;
-    // do not auto-create initial admin in constructor to avoid Firestore calls
-    // during container startup. Use scripts/reset_admin.js or call init()
-    // explicitly when you want to create the initial admin.
-  }
+function hashToken(token) {
+    return crypto.createHash('sha256').update(token).digest('hex');
+}
 
-  async _ensureInitialAdmin(){
-    // allow safe defaults in non-production for convenience
-    const defaultEmail = 'dpm@gmail.com';
-    const defaultPassword = '123456789';
-    const adminEmail = process.env.INIT_ADMIN_EMAIL || (process.env.NODE_ENV === 'production' ? null : defaultEmail);
-    const adminPassword = process.env.INIT_ADMIN_PASSWORD || (process.env.NODE_ENV === 'production' ? null : defaultPassword);
-    if (!adminEmail || !adminPassword) return;
-    const exists = await this.repository.findByEmail(adminEmail);
-    if (!exists) {
-      const pwdHash = bcrypt.hashSync(adminPassword,10);
-      const u = await this.repository.create({email:adminEmail,passwordHash:pwdHash,active:true,role:'admin'});
-      log('Created initial admin', u.email);
-    }
-  }
+function createVerificationToken(ttlMs) {
+    const token = crypto.randomBytes(32).toString('hex');
 
-  // explicit init to allow callers to await background setup tasks
-  async init(){
-    await this._ensureInitialAdmin();
-  }
+    return {
+        token,
+        hash: hashToken(token),
+        expiresAt: Date.now() + ttlMs
+    };
+}
 
-  async register(email,password){
-    if(!email||!email.includes('@'))throw new Error('EMAIL_INVALID');
-    if(!password||password.length<8)throw new Error('PASSWORD_TOO_SHORT');
-    if(await this.repository.findByEmail(email))throw new Error('EMAIL_EXISTS');
-    const role = 'user';
-    const user = {email,passwordHash:await bcrypt.hash(password,10),active:true,role};
-    const created = await this.repository.create(user);
-    log('register', created.email);
-    return created;
-  }
+function publicUser(user) {
+    if (!user) return null;
 
-  async authenticate(email,password){
-    const u=await this.repository.findByEmail(email);
-    if(!u||!(await bcrypt.compare(password,u.passwordHash)))throw new Error('INVALID_CREDENTIALS');
-    if(!u.active) throw new Error('ACCOUNT_PENDING');
-    log('authenticate', u.email);
-    return u;
-  }
+    const {
+        passwordHash,
+        emailLower,
+        emailVerificationTokenHash,
+        emailVerificationExpiresAt,
+        lastVerificationSentAt,
+        oauthId,
+        ...safe
+    } = user;
 
-  listUsers(){
-    const res = this.repository.findAll();
-    if (res && typeof res.then === 'function') {
-      return res.then(users => users.map(({passwordHash,...u})=>u));
-    }
-    return res.map(({passwordHash,...u})=>u);
-  }
+    return safe;
+}
 
-  isActive(id){
-    const res = this.repository.findById(id);
-    if (res && typeof res.then === 'function') {
-      return res.then(u => { if(!u) throw new Error('USER_NOT_FOUND'); return u.active; });
-    }
-    const u = res;
-    if(!u) throw new Error('USER_NOT_FOUND');
-    return u.active;
-  }
-
-  deleteUser(requesterId,targetId){
-    const requesterRes = this.repository.findById(requesterId);
-    if (requesterRes && typeof requesterRes.then === 'function') {
-      return requesterRes.then(async requester => {
-        if(!requester) throw new Error('USER_NOT_FOUND');
-        if(requester.role!=='admin' && String(requesterId)!==String(targetId)) throw new Error('FORBIDDEN');
-        const ok = await this.repository.deleteById(targetId);
-        if(!ok) throw new Error('USER_NOT_FOUND');
-        log('deleteUser', requester.email, '->', targetId);
-      });
+export class UserService {
+    constructor(repository, { emailService, appBaseUrl } = {}) {
+        this.repository = repository;
+        this.appBaseUrl = appBaseUrl || config.appBaseUrl;
+        this.emailService =
+            emailService ||
+            createEmailService({ appBaseUrl: this.appBaseUrl });
     }
 
-    const requester = requesterRes;
-    if(!requester) throw new Error('USER_NOT_FOUND');
-    if(requester.role!=='admin' && String(requesterId)!==String(targetId)) throw new Error('FORBIDDEN');
-    const ok = this.repository.deleteById(targetId);
-    if (ok && typeof ok.then === 'function') {
-      // repository delete returned a promise
-      return ok.then(ok2 => { if(!ok2) throw new Error('USER_NOT_FOUND'); log('deleteUser', requester.email, '->', targetId); });
+    async init() {
+        await this._ensureInitialAdmin();
     }
-    if(!ok) throw new Error('USER_NOT_FOUND');
-    log('deleteUser', requester.email, '->', targetId);
-  }
+
+    async _ensureInitialAdmin() {
+        const adminEmail = normalizeEmail(process.env.INIT_ADMIN_EMAIL);
+        const adminPassword = process.env.INIT_ADMIN_PASSWORD;
+
+        if (!adminEmail || !adminPassword) {
+            info(
+                'INIT_ADMIN_EMAIL/INIT_ADMIN_PASSWORD no configurados; ' +
+                    'no se crea administrador inicial'
+            );
+            return null;
+        }
+
+        if (!EMAIL_RE.test(adminEmail)) {
+            throw new Error('INIT_ADMIN_EMAIL_INVALID');
+        }
+
+        if (adminPassword.length < MIN_PASSWORD_LENGTH) {
+            throw new Error('INIT_ADMIN_PASSWORD_TOO_SHORT');
+        }
+
+        const existing = await this.repository.findByEmail(adminEmail);
+
+        if (existing) {
+            const patch = {
+                role: 'admin',
+                active: true,
+                emailVerificationTokenHash: null,
+                emailVerificationExpiresAt: null,
+                emailVerifiedAt:
+                    existing.emailVerifiedAt || new Date().toISOString()
+            };
+
+            if (!existing.passwordHash) {
+                patch.passwordHash = await bcrypt.hash(adminPassword, 10);
+            }
+
+            await this.repository.updateById(existing.id, patch);
+            info('Administrador inicial asegurado', adminEmail);
+            return publicUser({ ...existing, ...patch });
+        }
+
+        const passwordHash = await bcrypt.hash(adminPassword, 10);
+
+        const created = await this.repository.create({
+            email: adminEmail,
+            emailLower: adminEmail,
+            passwordHash,
+            active: true,
+            role: 'admin',
+            oauthProvider: null,
+            emailVerifiedAt: new Date().toISOString(),
+            createdAt: new Date().toISOString()
+        });
+
+        info('Administrador inicial creado', adminEmail);
+        return publicUser(created);
+    }
+
+    async register(email, password) {
+        const normalizedEmail = normalizeEmail(email);
+
+        if (!EMAIL_RE.test(normalizedEmail)) {
+            throw new Error('EMAIL_INVALID');
+        }
+
+        if (!password || password.length < MIN_PASSWORD_LENGTH) {
+            throw new Error('PASSWORD_TOO_SHORT');
+        }
+
+        if (password.length > MAX_PASSWORD_LENGTH) {
+            throw new Error('PASSWORD_TOO_LONG');
+        }
+
+        if (await this.repository.findByEmail(normalizedEmail)) {
+            throw new Error('EMAIL_EXISTS');
+        }
+
+        const verification = createVerificationToken(
+            config.verificationTokenTtlMs
+        );
+
+        const user = {
+            email: normalizedEmail,
+            emailLower: normalizedEmail,
+            passwordHash: await bcrypt.hash(password, 10),
+            active: false,
+            role: 'user',
+            oauthProvider: null,
+            emailVerificationTokenHash: verification.hash,
+            emailVerificationExpiresAt: verification.expiresAt,
+            lastVerificationSentAt: Date.now(),
+            createdAt: new Date().toISOString()
+        };
+
+        const created = await this.repository.create(user);
+
+        try {
+            await this._sendVerification(created, verification.token);
+        } catch (e) {
+            // Si el correo no se puede enviar, no dejamos una cuenta pendiente
+            // inutilizable: el usuario puede volver a intentar el registro.
+            await this.repository.deleteById(created.id).catch(() => {});
+            throw e;
+        }
+
+        info('Registro pendiente de confirmación', created.email);
+        return publicUser(created);
+    }
+
+    async _sendVerification(user, token) {
+        await this.emailService.sendVerificationEmail({
+            to: user.email,
+            token,
+            expiresAt: user.emailVerificationExpiresAt
+        });
+    }
+
+    async verifyEmail(token) {
+        if (!token || typeof token !== 'string') {
+            throw new Error('VERIFICATION_TOKEN_INVALID');
+        }
+
+        const tokenHash = hashToken(token);
+        const user =
+            await this.repository.findByVerificationTokenHash(tokenHash);
+
+        if (!user) {
+            throw new Error('VERIFICATION_TOKEN_INVALID');
+        }
+
+        if (
+            user.emailVerificationExpiresAt &&
+            Number(user.emailVerificationExpiresAt) <= Date.now()
+        ) {
+            await this.repository.updateById(user.id, {
+                emailVerificationTokenHash: null,
+                emailVerificationExpiresAt: null
+            });
+            throw new Error('VERIFICATION_TOKEN_EXPIRED');
+        }
+
+        if (user.active) {
+            return publicUser(user);
+        }
+
+        const updated = await this.repository.updateById(user.id, {
+            active: true,
+            emailVerificationTokenHash: null,
+            emailVerificationExpiresAt: null,
+            emailVerifiedAt: new Date().toISOString()
+        });
+
+        if (!updated) throw new Error('USER_NOT_FOUND');
+
+        info('Cuenta confirmada', updated.email);
+        return publicUser(updated);
+    }
+
+    async resendVerification(email) {
+        const normalizedEmail = normalizeEmail(email);
+
+        if (!EMAIL_RE.test(normalizedEmail)) {
+            throw new Error('EMAIL_INVALID');
+        }
+
+        const user = await this.repository.findByEmail(normalizedEmail);
+
+        // No revelamos si el email existe o no desde la ruta HTTP.
+        if (!user || user.active) {
+            return { sent: false };
+        }
+
+        const now = Date.now();
+
+        if (
+            user.lastVerificationSentAt &&
+            now - Number(user.lastVerificationSentAt) < RESEND_COOLDOWN_MS
+        ) {
+            throw new Error('RATE_LIMITED');
+        }
+
+        const verification = createVerificationToken(
+            config.verificationTokenTtlMs
+        );
+
+        const updated = await this.repository.updateById(user.id, {
+            emailVerificationTokenHash: verification.hash,
+            emailVerificationExpiresAt: verification.expiresAt,
+            lastVerificationSentAt: now
+        });
+
+        if (!updated) throw new Error('USER_NOT_FOUND');
+
+        try {
+            await this._sendVerification(updated, verification.token);
+        } catch (e) {
+            await this.repository
+                .updateById(user.id, { lastVerificationSentAt: 0 })
+                .catch(() => {});
+            throw e;
+        }
+
+        info('Correo de confirmación reenviado', updated.email);
+        return { sent: true };
+    }
+
+    async authenticate(email, password) {
+        const normalizedEmail = normalizeEmail(email);
+        const user = await this.repository.findByEmail(normalizedEmail);
+
+        if (!user) {
+            throw new Error('INVALID_CREDENTIALS');
+        }
+
+        if (!user.passwordHash) {
+            if (user.oauthProvider) {
+                throw new Error('OAUTH_ONLY');
+            }
+
+            throw new Error('INVALID_CREDENTIALS');
+        }
+
+        const passwordOk = await bcrypt.compare(
+            password || '',
+            user.passwordHash
+        );
+
+        if (!passwordOk) {
+            throw new Error('INVALID_CREDENTIALS');
+        }
+
+        if (!user.active) {
+            throw new Error('ACCOUNT_PENDING');
+        }
+
+        info('Inicio de sesión local', user.email);
+        return publicUser(user);
+    }
+
+    async loginWithOAuth(profile = {}) {
+        const email = normalizeEmail(profile.email);
+
+        if (!email || !EMAIL_RE.test(email)) {
+            throw new Error('OAUTH_EMAIL_MISSING');
+        }
+
+        if (profile.emailVerified === false) {
+            throw new Error('OAUTH_EMAIL_NOT_VERIFIED');
+        }
+
+        const provider = profile.provider || 'google';
+        const oauthId = profile.oauthId || profile.sub || null;
+        const now = new Date().toISOString();
+
+        const existing = await this.repository.findByEmail(email);
+
+        if (!existing) {
+            const created = await this.repository.create({
+                email,
+                emailLower: email,
+                passwordHash: null,
+                active: true,
+                role: 'user',
+                oauthProvider: provider,
+                oauthId,
+                emailVerifiedAt: now,
+                createdAt: now
+            });
+
+            info('Usuario OAuth creado', email, provider);
+            return publicUser(created);
+        }
+
+        const updated = await this.repository.updateById(existing.id, {
+            active: true,
+            oauthProvider: provider,
+            oauthId,
+            emailVerifiedAt: existing.emailVerifiedAt || now,
+            emailVerificationTokenHash: null,
+            emailVerificationExpiresAt: null
+        });
+
+        if (!updated) throw new Error('USER_NOT_FOUND');
+
+        info('Inicio de sesión OAuth', email, provider);
+        return publicUser(updated);
+    }
+
+    async getUser(id) {
+        const user = await this.repository.findById(id);
+
+        if (!user) throw new Error('USER_NOT_FOUND');
+
+        return publicUser(user);
+    }
+
+    async getUserOrNull(id) {
+        if (!id) return null;
+
+        const user = await this.repository.findById(id);
+
+        return publicUser(user);
+    }
+
+    async listUsers() {
+        const users = await this.repository.findAll();
+
+        return users
+            .map(publicUser)
+            .sort((a, b) =>
+                String(a.email || '').localeCompare(String(b.email || ''))
+            );
+    }
+
+    async isActive(id) {
+        const user = await this.repository.findById(id);
+
+        if (!user) throw new Error('USER_NOT_FOUND');
+
+        return Boolean(user.active);
+    }
+
+    async deleteUser(requesterId, targetId) {
+        const requester = await this.repository.findById(requesterId);
+
+        if (!requester) throw new Error('USER_NOT_FOUND');
+
+        if (
+            requester.role !== 'admin' &&
+            String(requesterId) !== String(targetId)
+        ) {
+            throw new Error('FORBIDDEN');
+        }
+
+        const deleted = await this.repository.deleteById(targetId);
+
+        if (!deleted) throw new Error('USER_NOT_FOUND');
+
+        info('Usuario eliminado', requester.email, '->', targetId);
+    }
 }

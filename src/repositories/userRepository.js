@@ -11,7 +11,7 @@ function ensureDirForFile(file) {
 
 export class UserRepository {
   constructor(dbFile = DEFAULT_DB_FILE) {
-    this.dbFile = dbFile;
+    this.dbFile = dbFile || DEFAULT_DB_FILE;
     this.inMemory = process.env.NODE_ENV === 'test' || this.dbFile === ':memory:';
     if (!this.inMemory) {
       ensureDirForFile(this.dbFile);
@@ -49,10 +49,38 @@ export class UserRepository {
       const existing = this.findByEmail(user.email);
       if (existing) return existing;
     }
-    const stored = { id: String(this.nextId++), ...user };
+    const stored = {
+      id: String(this.nextId++),
+      ...user
+    };
+    if (user?.email) {
+      stored.emailLower = String(user.email).toLowerCase();
+    }
     this.users.set(stored.id, stored);
     this._persist();
     return stored;
+  }
+
+  updateById(id, patch) {
+    const key = String(id);
+    const existing = this.users.get(key);
+    if (!existing) return null;
+    const updated = { ...existing, ...patch, id: existing.id };
+    if (patch?.email) {
+      updated.emailLower = String(patch.email).toLowerCase();
+    }
+    this.users.set(key, updated);
+    this._persist();
+    return updated;
+  }
+
+  findByVerificationTokenHash(tokenHash) {
+    if (!tokenHash) return null;
+    return (
+      this.findAll().find(
+        u => u.emailVerificationTokenHash === tokenHash
+      ) ?? null
+    );
   }
 
   findAll() {
@@ -65,7 +93,7 @@ export class UserRepository {
 
   findByEmail(email) {
     if (!email) return null;
-    return this.findAll().find(u => u.email.toLowerCase() === email.toLowerCase()) ?? null;
+    return this.findAll().find(u => String(u.email || '').toLowerCase() === email.toLowerCase()) ?? null;
   }
 
   deleteById(id) {

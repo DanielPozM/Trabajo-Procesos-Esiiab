@@ -13,16 +13,12 @@ export class UserRepositoryFirestore {
             process.env.FIRESTORE_DATABASE_ID ||
             'procesosusuariosdpm';
 
-        if (!projectId) {
-            throw new Error(
-                'Falta configurar el ID del proyecto de Google Cloud'
-            );
-        }
+        // En Cloud Run el proyecto se puede inferir de las credenciales o del
+        // metadata server. Si existe una variable de entorno, se usa.
+        const firestoreOptions = { databaseId };
+        if (projectId) firestoreOptions.projectId = projectId;
 
-        this.client = new Firestore({
-            projectId,
-            databaseId
-        });
+        this.client = new Firestore(firestoreOptions);
 
         this.collectionName =
             process.env.FIRESTORE_COLLECTION ||
@@ -32,7 +28,7 @@ export class UserRepositoryFirestore {
             this.client.collection(this.collectionName);
 
         console.log(
-            `Firestore conectado: project=${projectId}, ` +
+            `Firestore conectado: project=${this.client.projectId}, ` +
             `database=${databaseId}, ` +
             `collection=${this.collectionName}`
         );
@@ -47,7 +43,13 @@ export class UserRepositoryFirestore {
             ? this.collection.doc(id)
             : this.collection.doc();
 
-        const stored = { id: docRef.id, ...user };
+        const stored = {
+            id: docRef.id,
+            ...user
+        };
+        if (user?.email) {
+            stored.emailLower = String(user.email).toLowerCase();
+        }
 
         await docRef.set(stored);
         console.log('User saved to Firestore', {
@@ -57,6 +59,23 @@ export class UserRepositoryFirestore {
             documentId: docRef.id
         });
         return stored;
+    }
+
+    async updateById(id, patch) {
+        const docRef = this.collection.doc(String(id));
+        const doc = await docRef.get();
+
+        if (!doc.exists) return null;
+
+        const patchToStore = { ...patch, id: docRef.id };
+        if (patch?.email) {
+            patchToStore.emailLower = String(patch.email).toLowerCase();
+        }
+
+        await docRef.set(patchToStore, { merge: true });
+
+        const updated = await docRef.get();
+        return updated.data();
     }
 
     async findAll() {
@@ -72,13 +91,47 @@ export class UserRepositoryFirestore {
     async findByEmail(email) {
         if (!email) return null;
 
-        const id = encodeURIComponent(email);
-        const doc = await this.collection.doc(id).get();
+        const raw = String(email).trim();
+        const lower = raw.toLowerCase();
 
-        if (doc.exists) return doc.data();
+        // Los documentos nuevos usan el email en minúsculas como ID.
+        // Se prueban ambas variantes para no romper datos antiguos.
+        for (const candidate of [...new Set([raw, lower])]) {
+            const doc = await this.collection
+                .doc(encodeURIComponent(candidate))
+                .get();
+
+            if (doc.exists) return doc.data();
+        }
+
+        const byLower = await this.collection
+            .where('emailLower', '==', lower)
+            .limit(1)
+            .get();
+
+        if (!byLower.empty) return byLower.docs[0].data();
+
+        const byExact = await this.collection
+            .where('email', '==', raw)
+            .limit(1)
+            .get();
+
+        if (!byExact.empty) return byExact.docs[0].data();
+
+        // Último recurso para documentos creados antes de emailLower.
+        const all = await this.findAll();
+        return (
+            all.find(
+                u => String(u.email || '').toLowerCase() === lower
+            ) || null
+        );
+    }
+
+    async findByVerificationTokenHash(tokenHash) {
+        if (!tokenHash) return null;
 
         const snapshot = await this.collection
-            .where('email', '==', email)
+            .where('emailVerificationTokenHash', '==', tokenHash)
             .limit(1)
             .get();
 

@@ -1,49 +1,125 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Deployment script for Cloud Run (Cloud Shell)
-# Usage: run this in Cloud Shell from the repository root
+# Despliegue de Cloud Run.
+# Uso (Cloud Shell, desde la raíz del repositorio):
+#   export SESSION_SECRET='...'
+#   export INIT_ADMIN_EMAIL='...'
+#   export INIT_ADMIN_PASSWORD='...'
+#   export APP_BASE_URL='https://...'
+#   export GOOGLE_CLIENT_ID='...'
+#   export GOOGLE_CLIENT_SECRET='...'
+#   export GOOGLE_REDIRECT_URI='https://.../api/auth/oauth/google/callback'
+#   export SMTP_HOST='...'
+#   export SMTP_USER='...'
+#   export SMTP_PASS='...'
+#   export MAIL_FROM='...'
+#   bash scripts/deploy_cloudrun.sh
+#
+# El script no contiene credenciales. Los valores sensibles se guardan en
+# Secret Manager y se inyectan en Cloud Run como variables de entorno.
 
-PROJECT=trabajo-procesos-dpm
-REGION=europe-west1
-SERVICE=trabajoprocesosdmp
-IMAGE=gcr.io/${PROJECT}/sprint1-saas
-SA=run-firestore-sa@${PROJECT}.iam.gserviceaccount.com
-COLLECTION=procesosusuariosdpm
+PROJECT=${PROJECT:-trabajo-procesos-dpm}
+REGION=${REGION:-europe-west1}
+SERVICE=${SERVICE:-trabajoprocesosdmp}
+IMAGE=${IMAGE:-gcr.io/${PROJECT}/sprint1-saas}
+SA=${SA:-run-firestore-sa@${PROJECT}.iam.gserviceaccount.com}
+COLLECTION=${COLLECTION:-procesosusuariosdpm}
+SESSION_COLLECTION=${SESSION_COLLECTION:-sessions}
+SMTP_PORT=${SMTP_PORT:-587}
+SMTP_SECURE=${SMTP_SECURE:-false}
 
-echo "Using project: ${PROJECT}, region: ${REGION}"
+required_vars=(
+  SESSION_SECRET
+  INIT_ADMIN_EMAIL
+  INIT_ADMIN_PASSWORD
+  APP_BASE_URL
+  GOOGLE_CLIENT_ID
+  GOOGLE_CLIENT_SECRET
+  GOOGLE_REDIRECT_URI
+  SMTP_HOST
+  SMTP_USER
+  SMTP_PASS
+  MAIL_FROM
+)
 
-gcloud config set project ${PROJECT}
+for variable in "${required_vars[@]}"; do
+  if [ -z "${!variable:-}" ]; then
+    echo "ERROR: falta la variable de entorno ${variable}" >&2
+    exit 1
+  fi
+done
 
-echo "Enabling required APIs..."
-gcloud services enable run.googleapis.com cloudbuild.googleapis.com firestore.googleapis.com secretmanager.googleapis.com || true
+echo "Proyecto: ${PROJECT}; región: ${REGION}; servicio: ${SERVICE}"
 
-echo "Ensure service account exists"
-if ! gcloud iam service-accounts list --project=${PROJECT} --filter="email:${SA}" --format="value(email)" | grep -q "${SA}"; then
-  echo "Creating service account ${SA}"
-  gcloud iam service-accounts create run-firestore-sa --display-name="Cloud Run Firestore SA" --project=${PROJECT}
+gcloud config set project "${PROJECT}"
+
+echo "Habilitando APIs necesarias..."
+gcloud services enable \
+  run.googleapis.com \
+  cloudbuild.googleapis.com \
+  firestore.googleapis.com \
+  secretmanager.googleapis.com || true
+
+echo "Asegurando service account ${SA}..."
+if ! gcloud iam service-accounts list \
+  --project="${PROJECT}" \
+  --filter="email:${SA}" \
+  --format="value(email)" | grep -q "${SA}"; then
+  gcloud iam service-accounts create run-firestore-sa \
+    --display-name="Cloud Run Firestore SA" \
+    --project="${PROJECT}"
 else
-  echo "Service account ${SA} already exists"
+  echo "La service account ya existe."
 fi
 
-echo "Granting Firestore role to service account (may be no-op if already granted)"
-gcloud projects add-iam-policy-binding ${PROJECT} \
+echo "Concediendo acceso a Firestore..."
+gcloud projects add-iam-policy-binding "${PROJECT}" \
   --member="serviceAccount:${SA}" \
-  --role="roles/datastore.user" || true
+  --role="roles/datastore.user" >/dev/null || true
 
-echo "Building and submitting image to Cloud Build: ${IMAGE}"
-gcloud builds submit --tag ${IMAGE} .
+upsert_secret() {
+  local name=$1
+  local value=$2
 
-echo "Deploying to Cloud Run service ${SERVICE}"
-gcloud run deploy ${SERVICE} \
-  --image ${IMAGE} \
+  if gcloud secrets describe "${name}" --project="${PROJECT}" >/dev/null 2>&1; then
+    printf '%s' "${value}" | gcloud secrets versions add "${name}" \
+      --project="${PROJECT}" \
+      --data-file=-
+  else
+    printf '%s' "${value}" | gcloud secrets create "${name}" \
+      --project="${PROJECT}" \
+      --replication-policy=automatic \
+      --data-file=-
+  fi
+
+  gcloud secrets add-iam-policy-binding "${name}" \
+    --project="${PROJECT}" \
+    --member="serviceAccount:${SA}" \
+    --role="roles/secretmanager.secretAccessor" >/dev/null
+}
+
+echo "Guardando secretos en Secret Manager..."
+upsert_secret session-secret "${SESSION_SECRET}"
+upsert_secret init-admin-password "${INIT_ADMIN_PASSWORD}"
+upsert_secret google-client-secret "${GOOGLE_CLIENT_SECRET}"
+upsert_secret smtp-pass "${SMTP_PASS}"
+
+echo "Construyendo imagen ${IMAGE}..."
+gcloud builds submit --tag "${IMAGE}" .
+
+echo "Desplegando en Cloud Run..."
+gcloud run deploy "${SERVICE}" \
+  --image "${IMAGE}" \
   --platform managed \
-  --region ${REGION} \
+  --region "${REGION}" \
   --allow-unauthenticated \
-  --service-account=${SA} \
-  --set-env-vars "DB_TYPE=firestore,FIRESTORE_COLLECTION=${COLLECTION},INIT_ADMIN_EMAIL=dpm@gmail.com,INIT_ADMIN_PASSWORD=123456789,SESSION_SECRET=change-me"
+  --service-account="${SA}" \
+  --set-env-vars "DB_TYPE=firestore,FIRESTORE_COLLECTION=${COLLECTION},SESSION_COLLECTION=${SESSION_COLLECTION},APP_BASE_URL=${APP_BASE_URL},INIT_ADMIN_EMAIL=${INIT_ADMIN_EMAIL},GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID},GOOGLE_REDIRECT_URI=${GOOGLE_REDIRECT_URI},SMTP_HOST=${SMTP_HOST},SMTP_PORT=${SMTP_PORT},SMTP_SECURE=${SMTP_SECURE},SMTP_USER=${SMTP_USER},MAIL_FROM=${MAIL_FROM}" \
+  --set-secrets "SESSION_SECRET=session-secret:latest,INIT_ADMIN_PASSWORD=init-admin-password:latest,GOOGLE_CLIENT_SECRET=google-client-secret:latest,SMTP_PASS=smtp-pass:latest"
 
-echo "Deployment completed. Running reset_admin.js to ensure admin exists"
-node ./scripts/reset_admin.js || echo "reset_admin failed; check scripts/reset_admin.js and credentials"
-
-echo "Done. Get service URL with: gcloud run services describe ${SERVICE} --region ${REGION} --project ${PROJECT} --format=\"value(status.url)\""
+echo "Despliegue completado."
+gcloud run services describe "${SERVICE}" \
+  --region "${REGION}" \
+  --project "${PROJECT}" \
+  --format="value(status.url)"
