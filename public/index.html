@@ -10,7 +10,7 @@
           content="width=device-width, initial-scale=1.0">
 
     <title>
-        Gestión de Usuarios
+        Lier's Dice' · Juego de dados pirata en línea
     </title>
 
 
@@ -335,12 +335,12 @@
             }
 
 
-        .link-button.highlight {
-            background: #fef3c7;
-            border-radius: 6px;
-            padding: 2px 6px;
-            animation: pulse 1.2s ease-in-out 3;
-        }
+            .link-button.highlight {
+                background: #fef3c7;
+                border-radius: 6px;
+                padding: 2px 6px;
+                animation: pulse 1.2s ease-in-out 3;
+            }
 
 
         @keyframes pulse {
@@ -368,10 +368,10 @@
             }
 
 
-        .btn-google svg {
-            width: 18px;
-            height: 18px;
-        }
+            .btn-google svg {
+                width: 18px;
+                height: 18px;
+            }
 
 
         .auth-divider {
@@ -774,60 +774,6 @@
         }
 
 
-        .game-placeholder-card {
-            background: white;
-            border: 1px solid var(--border);
-            border-radius: 25px;
-            padding: 35px;
-            text-align: center;
-            box-shadow: 0 20px 60px rgba(15,23,42,.08);
-        }
-
-
-        .game-players {
-            display: flex;
-            justify-content: center;
-            gap: 20px;
-            flex-wrap: wrap;
-            margin-bottom: 30px;
-        }
-
-
-        .game-player {
-            background: #f8fafc;
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            padding: 16px 22px;
-            min-width: 190px;
-        }
-
-
-        .game-player-role {
-            display: block;
-            font-size: 11px;
-            text-transform: uppercase;
-            letter-spacing: .1em;
-            color: var(--muted);
-            margin-bottom: 6px;
-        }
-
-
-        .game-player strong {
-            display: block;
-            font-size: 16px;
-            word-break: break-all;
-        }
-
-
-        .placeholder-dice {
-            display: flex;
-            justify-content: center;
-            gap: 12px;
-            flex-wrap: wrap;
-            margin-bottom: 25px;
-        }
-
-
         .die {
             width: 54px;
             height: 54px;
@@ -844,10 +790,290 @@
         }
 
 
-        .game-note {
-            color: var(--muted);
-            line-height: 1.7;
+        .game-table {
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+            margin-bottom: 22px;
         }
+
+
+        .game-seat {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 18px 22px;
+            box-shadow: 0 10px 30px rgba(15,23,42,.05);
+            transition: border-color .2s, box-shadow .2s;
+        }
+
+
+            .game-seat.is-turn {
+                border-color: var(--primary);
+                box-shadow: 0 0 0 3px rgba(99,102,241,.15);
+            }
+
+
+        .seat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+
+        .seat-name {
+            font-weight: 700;
+            font-size: 16px;
+        }
+
+
+        .seat-meta {
+            color: var(--muted);
+            font-size: 12px;
+        }
+
+
+        .seat-dice {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+
+        .die.hidden {
+            background: linear-gradient(135deg, #334155, #1e293b);
+            color: #94a3b8;
+            border-color: #1e293b;
+        }
+
+
+        .die.small {
+            width: 40px;
+            height: 40px;
+            font-size: 18px;
+            border-radius: 9px;
+        }
+
+
+        .game-center {
+            text-align: center;
+        }
+
+
+        .current-bid {
+            background: #eef2ff;
+            border: 1px dashed #c7d2fe;
+            border-radius: 16px;
+            padding: 14px 18px;
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--primary-dark);
+        }
+
+
+            .current-bid.empty {
+                background: #f8fafc;
+                border-color: var(--border);
+                color: var(--muted);
+                font-weight: 500;
+                font-size: 15px;
+            }
+
+
+        .turn-indicator {
+            margin-top: 10px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--muted);
+        }
+
+
+            .turn-indicator.is-yours {
+                color: var(--success);
+            }
+
+
+        .game-controls {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 20px 22px;
+            box-shadow: 0 10px 30px rgba(15,23,42,.05);
+            margin-bottom: 22px;
+        }
+
+
+        .bid-controls {
+            display: flex;
+            gap: 14px;
+            align-items: flex-end;
+            flex-wrap: wrap;
+        }
+
+
+            .bid-controls label {
+                display: flex;
+                flex-direction: column;
+                gap: 6px;
+                font-size: 12px;
+                font-weight: 700;
+                text-transform: uppercase;
+                letter-spacing: .08em;
+                color: var(--muted);
+            }
+
+
+            .bid-controls input,
+            .bid-controls select {
+                border: 1px solid var(--border);
+                border-radius: 10px;
+                padding: 10px 12px;
+                font-size: 15px;
+                background: #f8fafc;
+                color: var(--text);
+                min-width: 90px;
+            }
+
+
+        .game-controls .btn-danger {
+            margin-top: 14px;
+        }
+
+
+        .game-hint {
+            margin-top: 12px;
+            color: var(--muted);
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+
+        .game-result {
+            border-radius: 20px;
+            padding: 24px 26px;
+            margin-bottom: 22px;
+            text-align: center;
+        }
+
+
+            .game-result.win {
+                background: #ecfdf5;
+                border: 1px solid #a7f3d0;
+                color: #065f46;
+            }
+
+
+            .game-result.lose {
+                background: #fef2f2;
+                border: 1px solid #fecaca;
+                color: #991b1b;
+            }
+
+
+            .game-result h2 {
+                font-size: 24px;
+                margin-bottom: 8px;
+            }
+
+
+            .game-result p {
+                line-height: 1.6;
+            }
+
+
+        .game-reveal {
+            background: #fffbeb;
+            border: 1px solid #fde68a;
+            border-radius: 20px;
+            padding: 20px 22px;
+            margin-bottom: 22px;
+        }
+
+
+            .game-reveal h2 {
+                font-size: 17px;
+                margin-bottom: 8px;
+            }
+
+
+            .game-reveal p {
+                color: var(--muted);
+                line-height: 1.6;
+                margin-bottom: 14px;
+            }
+
+
+        .reveal-hands {
+            display: flex;
+            gap: 22px;
+            flex-wrap: wrap;
+        }
+
+
+        .reveal-hand {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+
+        .game-log-card {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 20px 22px;
+            box-shadow: 0 10px 30px rgba(15,23,42,.05);
+        }
+
+
+            .game-log-card h2 {
+                font-size: 16px;
+                margin-bottom: 12px;
+            }
+
+
+        .game-log {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-height: 260px;
+            overflow-y: auto;
+            font-size: 13px;
+            color: var(--muted);
+        }
+
+
+            .game-log li {
+                border-bottom: 1px solid var(--border);
+                padding-bottom: 8px;
+                line-height: 1.5;
+            }
+
+
+                .game-log li:last-child {
+                    border-bottom: none;
+                    padding-bottom: 0;
+                }
+
+
+            .game-log strong {
+                color: var(--text);
+            }
+
+
+            .game-log .log-loss {
+                color: var(--danger);
+                font-weight: 600;
+            }
+
+
+            .game-log .log-win {
+                color: var(--success);
+                font-weight: 600;
+            }
 
 
         /* ==================================
@@ -932,6 +1158,459 @@
                     flex: 1;
                 }
         }
+
+
+        /* ==================================
+           TEMA PIRATA
+           Capa visual: conserva IDs y lógica
+        ================================== */
+
+        :root {
+            --primary: #9b5b18;
+            --primary-dark: #6f3d10;
+            --secondary: #d49a32;
+            --background: #102b38;
+            --white: #f5e7c4;
+            --text: #302315;
+            --muted: #78664a;
+            --border: #b99a62;
+            --danger: #9d3028;
+            --success: #386b43;
+        }
+
+        body {
+            font-family: Georgia, "Times New Roman", serif;
+            background-color: #102b38;
+            color: #f4e7c7;
+            background-image: radial-gradient(ellipse at 15% 15%, rgba(43, 91, 103, .55), transparent 38%), radial-gradient(ellipse at 85% 80%, rgba(7, 25, 34, .8), transparent 42%), repeating-linear-gradient(115deg, rgba(255,255,255,.018) 0 2px, transparent 2px 7px);
+        }
+
+        header {
+            background: linear-gradient(180deg, #56351f, #352115);
+            border-bottom: 3px solid #bd8b3e;
+            color: #f8e8bd;
+            box-shadow: 0 5px 18px rgba(0,0,0,.3);
+        }
+
+        .logo {
+            letter-spacing: .03em;
+        }
+
+        .logo-icon {
+            background: linear-gradient(145deg, #e0b34e, #95601e);
+            border: 2px solid #f2d58c;
+            border-radius: 50%;
+            box-shadow: inset 0 0 0 3px rgba(71,42,17,.25), 0 3px 8px rgba(0,0,0,.3);
+        }
+
+        .header-user span {
+            color: #f1dcae;
+        }
+
+        /* Mapa del tesoro: bienvenida y autenticación */
+        #welcome-view {
+            position: relative;
+            overflow: hidden;
+            background-color: #b98b45;
+            background-image: radial-gradient(ellipse at 20% 25%, rgba(255,246,194,.75), transparent 42%), radial-gradient(ellipse at 82% 75%, rgba(115,68,27,.25), transparent 45%), repeating-linear-gradient(8deg, rgba(91,57,24,.045) 0 1px, transparent 1px 5px), linear-gradient(135deg, #e9d08d, #c99d55 55%, #ead69b);
+        }
+
+            #welcome-view::before {
+                content: "✦  N  ✦";
+                position: absolute;
+                top: 28px;
+                right: 5%;
+                color: rgba(91,55,22,.35);
+                font-size: 24px;
+                letter-spacing: .3em;
+                transform: rotate(12deg);
+            }
+
+            #welcome-view::after {
+                content: "";
+                position: absolute;
+                inset: 18px;
+                border: 2px dashed rgba(103,65,27,.35);
+                border-radius: 8px;
+                pointer-events: none;
+            }
+
+        .hero {
+            position: relative;
+            z-index: 1;
+        }
+
+        .hero-text h1 {
+            background: none;
+            color: #563416;
+            -webkit-text-fill-color: #563416;
+            font-family: Georgia, "Times New Roman", serif;
+            text-shadow: 1px 2px 0 rgba(255,240,190,.55);
+        }
+
+        .hero-text p {
+            color: #634a2c;
+        }
+
+        .hero-card {
+            color: #3c2a17;
+            background: repeating-linear-gradient(0deg, rgba(109,75,34,.035) 0 1px, transparent 1px 4px), linear-gradient(145deg, #f6e8bd, #dfc184);
+            border: 2px solid #9a7138;
+            border-radius: 5px 18px 5px 18px;
+            box-shadow: 7px 9px 0 rgba(76,48,21,.18), 0 18px 45px rgba(53,35,17,.2);
+            transform: rotate(1deg);
+        }
+
+        .hero-card-icon {
+            color: #704719;
+            background: #e8cb83;
+            border: 1px solid #b18a48;
+            border-radius: 50%;
+        }
+
+        .hero-card p {
+            color: #705735;
+        }
+
+        .btn {
+            border-radius: 5px;
+            font-family: Georgia, "Times New Roman", serif;
+            letter-spacing: .025em;
+            box-shadow: 0 3px 0 rgba(48,29,13,.2);
+        }
+
+        .btn-primary {
+            color: #fff2ce;
+            background: linear-gradient(180deg, #b77929, #754316);
+            border: 1px solid #e0b45e;
+            box-shadow: inset 0 1px rgba(255,255,255,.2), 0 4px 0 #4e2c12;
+        }
+
+            .btn-primary:hover {
+                background: linear-gradient(180deg, #ca8c38, #89521d);
+            }
+
+        .btn-secondary {
+            color: #503719;
+            background: linear-gradient(180deg, #f8edcf, #ddc58f);
+            border: 1px solid #a9874e;
+        }
+
+        .btn-danger {
+            color: #fff0d7;
+            background: linear-gradient(180deg, #ad4638, #76251f);
+            border: 1px solid #d17a5c;
+        }
+
+        .auth-container {
+            background-color: #b98b45;
+            background-image: radial-gradient(ellipse at 20% 20%, rgba(255,247,207,.7), transparent 45%), repeating-linear-gradient(8deg, rgba(91,57,24,.04) 0 1px, transparent 1px 5px), linear-gradient(135deg, #e9d08d, #c99d55);
+        }
+
+        .auth-card {
+            color: #3b2918;
+            background: repeating-linear-gradient(0deg, rgba(109,75,34,.025) 0 1px, transparent 1px 4px), linear-gradient(145deg, #f7edcf, #e5ce99);
+            border: 2px solid #98703b;
+            border-radius: 6px 20px 6px 20px;
+            box-shadow: 8px 10px 0 rgba(76,48,21,.18), 0 20px 50px rgba(53,35,17,.25);
+        }
+
+            .auth-card h2 {
+                color: #593819;
+            }
+
+            .auth-card > p, .form-footer, .auth-note {
+                color: #765b35;
+            }
+
+        .form-group label {
+            color: #604323;
+        }
+
+        .form-group input {
+            color: #382817;
+            background: rgba(255,250,231,.8);
+            border: 1px solid #b99a62;
+            border-radius: 5px;
+        }
+
+            .form-group input:focus {
+                border-color: #a66a22;
+                box-shadow: 0 0 0 3px rgba(166,106,34,.15);
+            }
+
+        .link-button {
+            color: #8b5017;
+        }
+
+        .btn-google {
+            color: #382817;
+            background: #fff8e8;
+            border: 1px solid #b99a62;
+            border-radius: 5px;
+        }
+
+        .auth-divider::before, .auth-divider::after {
+            background: #c5a873;
+        }
+
+        /* Zona privada: cubierta del barco */
+        #dashboard-view,
+        #matchmaking-view,
+        #game-view {
+            min-height: calc(100vh - 70px);
+            background-color: #102b38;
+            background-image: radial-gradient(ellipse at 50% 0%, rgba(49,91,99,.42), transparent 55%), repeating-linear-gradient(90deg, rgba(255,255,255,.012) 0 1px, transparent 1px 9px);
+        }
+
+        .dashboard-header h1, .dashboard-section h2,
+        .game-header h1, .searching-card h2 {
+            color: #f2dfb2;
+            font-family: Georgia, "Times New Roman", serif;
+        }
+
+        .dashboard-header p {
+            color: #c4b18b;
+        }
+
+        .dashboard-section h2 {
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(211,173,104,.45);
+        }
+
+        .user-card, .loading, .empty-users,
+        .searching-card, .game-seat, .game-controls, .game-log-card {
+            color: #3b2918;
+            background: linear-gradient(145deg, #f5e8c5, #dfc58f);
+            border: 2px solid #a17a42;
+            border-radius: 7px 17px 7px 17px;
+            box-shadow: 5px 7px 0 rgba(0,0,0,.2), 0 10px 25px rgba(0,0,0,.15);
+        }
+
+            .user-info h3, .empty-users h3, .game-log-card h2 {
+                color: #513519;
+            }
+
+        .user-info p, .loading, .empty-users {
+            color: #765b35;
+        }
+
+        .user-avatar {
+            color: #fff0c9;
+            background: linear-gradient(145deg, #815329, #4b301d);
+            border: 2px solid #c49a55;
+            border-radius: 50%;
+        }
+
+        .badge-admin, .badge-pending {
+            color: #68400f;
+            background: #f2d58e;
+        }
+
+        .badge-user {
+            color: #244653;
+            background: #d2e2df;
+        }
+
+        .badge-active {
+            color: #285536;
+            background: #d5e5bd;
+        }
+
+        .badge-oauth {
+            color: #24506a;
+            background: #d5e7ed;
+        }
+
+        .badge-self {
+            color: #5b4b32;
+            background: #e6dcc3;
+        }
+
+        .btn-status {
+            color: #4c371c;
+            background: #ead39c;
+        }
+
+        .btn-delete {
+            color: white;
+            background: #96382d;
+        }
+
+        /* Emparejamiento */
+        .searching-card {
+            background: repeating-linear-gradient(0deg, rgba(109,75,34,.025) 0 1px, transparent 1px 4px), linear-gradient(145deg, #f5e8c5, #dfc58f);
+        }
+
+            .searching-card h2 {
+                color: #563719;
+            }
+
+            .searching-card p {
+                color: #765b35;
+            }
+
+        .spinner {
+            border-color: #e5d2a5;
+            border-top-color: #946020;
+        }
+
+        /* Mesa de dados pirata */
+        .game-kicker {
+            color: #e0b65f;
+            letter-spacing: .18em;
+        }
+
+        .game-header h1 {
+            text-shadow: 1px 2px 0 rgba(0,0,0,.35);
+        }
+
+        .game-table {
+            padding: 22px;
+            border: 7px solid #60391e;
+            border-radius: 28px;
+            background: radial-gradient(ellipse at center, rgba(33,91,75,.88), rgba(12,54,51,.98)), #164b42;
+            box-shadow: inset 0 0 0 3px #bd8c43, inset 0 0 35px rgba(0,0,0,.45), 0 12px 30px rgba(0,0,0,.3);
+        }
+
+        .game-seat {
+            border-color: #b58a4a;
+            background: linear-gradient(145deg, #f5e8c5, #dec28a);
+        }
+
+            .game-seat.is-turn {
+                border-color: #e0b34e;
+                box-shadow: 0 0 0 3px rgba(224,179,78,.35), 0 0 22px rgba(224,179,78,.22);
+            }
+
+        .seat-name {
+            color: #543719;
+        }
+
+        .seat-meta {
+            color: #806644;
+        }
+
+        .die {
+            color: #4a2e16;
+            background: linear-gradient(145deg, #fff7df, #d9c18c);
+            border: 2px solid #9d7941;
+            border-radius: 8px;
+            box-shadow: inset 0 -4px 0 rgba(77,49,20,.12), 0 2px 4px rgba(0,0,0,.12);
+        }
+
+            .die.hidden {
+                color: #d9bd7c;
+                background: linear-gradient(145deg, #56351f, #241b16);
+                border-color: #b58a4a;
+            }
+
+        .current-bid {
+            color: #563719;
+            background: #f0d99f;
+            border: 2px dashed #a77934;
+            border-radius: 8px;
+        }
+
+            .current-bid.empty {
+                color: #826a46;
+                background: #eee2c2;
+                border-color: #c5aa76;
+            }
+
+        .turn-indicator {
+            color: #e8d7ae;
+        }
+
+            .turn-indicator.is-yours {
+                color: #f1cf70;
+            }
+
+        .game-controls, .game-log-card {
+            border-radius: 7px 17px 7px 17px;
+        }
+
+        .bid-controls label {
+            color: #6b4b27;
+        }
+
+        .bid-controls input, .bid-controls select {
+            color: #3b2918;
+            background: #fff7e3;
+            border: 1px solid #b99a62;
+            border-radius: 5px;
+        }
+
+        .game-hint {
+            color: #765b35;
+        }
+
+        .game-result.win {
+            color: #294d2e;
+            background: #e0e9c9;
+            border: 2px solid #8ba56a;
+        }
+
+        .game-result.lose {
+            color: #742c24;
+            background: #f1d5c5;
+            border: 2px solid #c27b61;
+        }
+
+        .game-reveal {
+            color: #4b351c;
+            background: #f2dfad;
+            border: 2px solid #b58a4a;
+        }
+
+            .game-reveal p {
+                color: #765b35;
+            }
+
+        .game-log-card h2 {
+            color: #563719;
+        }
+
+        .game-log {
+            color: #765b35;
+        }
+
+            .game-log li {
+                border-color: #d1b987;
+            }
+
+            .game-log strong {
+                color: #513519;
+            }
+
+        #alert-container .alert {
+            border: 1px solid rgba(255,230,174,.45);
+            border-radius: 5px 12px 5px 12px;
+            font-family: Georgia, "Times New Roman", serif;
+        }
+
+            #alert-container .alert.success {
+                background: #386b43;
+            }
+
+            #alert-container .alert.error {
+                background: #96382d;
+            }
+
+        @media (max-width: 600px) {
+            #welcome-view::after {
+                inset: 8px;
+            }
+
+            .game-table {
+                padding: 12px;
+                border-width: 4px;
+            }
+
+            .hero-card {
+                transform: none;
+            }
+        }
     </style>
 
 </head>
@@ -949,11 +1628,11 @@
         <div class="logo">
 
             <div class="logo-icon">
-                👥
+                ☠️
             </div>
 
             <span>
-                Gestión de Usuarios
+                Liers Dice
             </span>
 
         </div>
@@ -991,16 +1670,12 @@
                 <div class="hero-text">
 
                     <h1>
-                        Gestiona tus usuarios
-                        de forma sencilla.
+                        ¡Apuesta, engaña y gana!
                     </h1>
 
 
                     <p>
-                        Una aplicación moderna para
-                        registrar usuarios, iniciar sesión
-                        y gestionar las cuentas de forma
-                        sencilla y segura.
+                        El juego de dados pirata que aparece en Piratas del Caribe. Lanza los dados, haz apuestas y si ganas personaliza tus dados.
                     </p>
 
 
@@ -1030,15 +1705,12 @@
 
 
                     <h3>
-                        Autenticación segura
+                        Unete a la tripulacion
                     </h3>
 
 
                     <p>
-                        Confirma tu cuenta por correo,
-                        inicia sesión con Google y mantén
-                        tu sesión protegida con cookies
-                        HttpOnly.
+                        Registra tu cuenta, confirma tu correo y sube a bordo. Tu aventura comienza aquí.
                     </p>
 
                 </div>
@@ -1122,13 +1794,13 @@
                         <svg viewBox="0 0 48 48"
                              aria-hidden="true">
                             <path fill="#EA4335"
-                                  d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+                                  d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
                             <path fill="#4285F4"
-                                  d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+                                  d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
                             <path fill="#FBBC05"
-                                  d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+                                  d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
                             <path fill="#34A853"
-                                  d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+                                  d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
                         </svg>
                         Continuar con Google
                     </a>
@@ -1238,13 +1910,13 @@
                         <svg viewBox="0 0 48 48"
                              aria-hidden="true">
                             <path fill="#EA4335"
-                                  d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+                                  d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
                             <path fill="#4285F4"
-                                  d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+                                  d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
                             <path fill="#FBBC05"
-                                  d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+                                  d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
                             <path fill="#34A853"
-                                  d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+                                  d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
                         </svg>
                         Registrarme con Google
                     </a>
@@ -1283,12 +1955,11 @@
                     <div>
 
                         <h1>
-                            Panel de control
+                            Tripulantes
                         </h1>
 
                         <p id="dashboard-subtitle">
-                            Gestiona los usuarios
-                            registrados en la aplicación.
+                            Consulta a la tripulación si eres capitán, sino solo veras tu perfil.
                         </p>
 
                     </div>
@@ -1298,7 +1969,7 @@
 
                         <button id="find-opponent"
                                 class="btn btn-primary">
-                            Buscar oponente
+                            ⚓ Buscar rival
                         </button>
 
 
@@ -1315,7 +1986,7 @@
                 <div class="dashboard-section">
 
                     <h2 id="users-title">
-                        Usuarios registrados
+                        La tripulación
                     </h2>
 
 
@@ -1350,7 +2021,7 @@
 
 
                     <h2>
-                        Buscando oponente
+                        Buscando rival en alta mar
                     </h2>
 
 
@@ -1373,7 +2044,7 @@
 
 
         <!-- ==================================
-             PARTIDA (PLACEHOLDER DEL HITO 1)
+             PARTIDA
         ================================== -->
 
         <section id="game-view"
@@ -1385,7 +2056,8 @@
 
                     <div>
 
-                        <p class="game-kicker">
+                        <p id="game-kicker"
+                           class="game-kicker">
                             Partida encontrada
                         </p>
 
@@ -1405,20 +2077,103 @@
                 </div>
 
 
-                <div class="game-placeholder-card">
-
-                    <div id="game-players"
-                         class="game-players"></div>
-
-
-                    <div id="game-dice"
-                         class="placeholder-dice"></div>
+                <div id="game-result"
+                     class="game-result"
+                     hidden></div>
 
 
-                    <p class="game-note">
-                        La mesa está preparada. El juego del dado
-                        mentiroso completo llegará en el siguiente hito.
-                    </p>
+                <div id="game-reveal"
+                     class="game-reveal"
+                     hidden></div>
+
+
+                <div class="game-table">
+
+                    <div id="game-opponent"
+                         class="game-seat"></div>
+
+
+                    <div class="game-center">
+
+                        <div id="game-current-bid"
+                             class="current-bid empty">
+                            Todavía no hay apuesta.
+                        </div>
+
+
+                        <div id="game-turn"
+                             class="turn-indicator"></div>
+
+                    </div>
+
+
+                    <div id="game-self"
+                         class="game-seat"></div>
+
+                </div>
+
+
+                <div id="game-controls"
+                     class="game-controls">
+
+                    <div class="bid-controls">
+
+                        <label for="bid-quantity">
+                            Cantidad
+
+                            <input id="bid-quantity"
+                                   type="number"
+                                   min="1"
+                                   max="8"
+                                   value="1">
+                        </label>
+
+
+                        <label for="bid-face">
+                            Cara
+
+                            <select id="bid-face">
+                                <option value="1">1</option>
+                                <option value="2">2</option>
+                                <option value="3">3</option>
+                                <option value="4">4</option>
+                                <option value="5">5</option>
+                                <option value="6">6</option>
+                            </select>
+                        </label>
+
+
+                        <button id="bid-submit"
+                                class="btn btn-primary"
+                                type="button">
+                            Apostar
+                        </button>
+
+                    </div>
+
+
+                    <button id="challenge-button"
+                            class="btn btn-danger"
+                            type="button">
+                        ¡Mentira!
+                    </button>
+
+
+                    <p id="game-hint"
+                       class="game-hint"></p>
+
+                </div>
+
+
+                <div class="game-log-card">
+
+                    <h2>
+                        Historial de la partida
+                    </h2>
+
+
+                    <ol id="game-log"
+                        class="game-log"></ol>
 
                 </div>
 
