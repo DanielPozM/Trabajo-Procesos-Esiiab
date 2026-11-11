@@ -32,6 +32,10 @@ const verificationTokenTtlMinutes = Number(
     process.env.VERIFICATION_TOKEN_TTL_MINUTES || 24 * 60
 );
 
+const matchmakingTtlSeconds = Number(
+    process.env.MATCHMAKING_TTL_SECONDS || 120
+);
+
 export const config = {
     isProduction,
     port,
@@ -41,7 +45,12 @@ export const config = {
     sessionSecret: process.env.SESSION_SECRET || '',
     google,
     smtp,
-    verificationTokenTtlMs: verificationTokenTtlMinutes * 60 * 1000
+    verificationTokenTtlMs: verificationTokenTtlMinutes * 60 * 1000,
+    matchmaking: {
+        ttlMs: matchmakingTtlSeconds * 1000,
+        collection: process.env.MATCHMAKING_COLLECTION || 'matchmaking',
+        matchesCollection: process.env.MATCHES_COLLECTION || 'matches'
+    }
 };
 
 export function isGoogleOAuthConfigured() {

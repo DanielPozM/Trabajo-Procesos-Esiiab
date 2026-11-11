@@ -1,4 +1,4 @@
-# Gestión de Usuarios — Sprint 1
+# Gestión de Usuarios y Dado Mentiroso — Sprints 1 y 2
 
 Aplicación SaaS de gestión de usuarios con registro local, confirmación de cuenta por correo, inicio de sesión con Google (OAuth 2.0), sesiones persistentes, roles de usuario/administrador y persistencia en Firestore.
 
@@ -28,14 +28,18 @@ Navegador
   └─ cliente API:  public/js/apiClient.js
           │  HTTP/JSON (mismo origen)
           ▼
-API HTTP: src/api/authRoutes.js, src/api/userRoutes.js
+API HTTP: src/api/authRoutes.js, src/api/userRoutes.js,
+          src/api/matchmakingRoutes.js
           │
           ▼
 Lógica de negocio: src/services/userService.js
+                   src/services/matchmakingService.js
           │
           ▼
 Acceso a datos: src/repositories/userRepository.js
                 src/repositories/userRepositoryFirestore.js
+                src/repositories/matchmakingRepository.js
+                src/repositories/matchmakingRepositoryFirestore.js
                 src/repositories/sessionStoreFirestore.js
 ```
 
@@ -51,7 +55,7 @@ Acceso a datos: src/repositories/userRepository.js
 src/
   api/            rutas HTTP y traducción de errores
   services/       reglas de negocio y envío de correo
-  repositories/   persistencia de usuarios y sesiones
+  repositories/   persistencia de usuarios, sesiones y emparejamiento
   lib/            logger
   config.js       lectura centralizada de variables de entorno
   app.js          composición de la aplicación Express
@@ -109,7 +113,14 @@ Las pruebas son unitarias, automatizadas y se ejecutan con un único comando. Cu
 - administrador que elimina a otro usuario;
 - creación de cuenta OAuth activa;
 - OAuth que activa una cuenta local pendiente sin cambiar su rol;
-- creación del administrador inicial desde variables de entorno.
+- creación del administrador inicial desde variables de entorno;
+- jugador que entra en la cola y queda en espera;
+- emparejamiento de dos jugadores en una partida;
+- ambos jugadores consultan la misma partida;
+- jugador que no se empareja consigo mismo;
+- salida de la cola y caducidad de entradas;
+- acceso a la partida restringido a sus jugadores;
+- respuestas de emparejamiento sin datos sensibles.
 
 ## Variables de entorno
 
@@ -127,6 +138,9 @@ El repositorio incluye `.env.example` con los **nombres** de las variables, sin 
 | `FIRESTORE_DATABASE_ID` | Base de datos de Firestore. |
 | `FIRESTORE_COLLECTION` | Colección de usuarios. |
 | `SESSION_COLLECTION` | Colección de sesiones en Firestore. |
+| `MATCHMAKING_TTL_SECONDS` | Segundos que una entrada permanece válida en la cola. |
+| `MATCHMAKING_COLLECTION` | Colección de la cola de emparejamiento. |
+| `MATCHES_COLLECTION` | Colección de partidas creadas. |
 | `INIT_ADMIN_EMAIL` | Email del administrador inicial. |
 | `INIT_ADMIN_PASSWORD` | Contraseña del administrador inicial. |
 | `GOOGLE_CLIENT_ID` | Client ID de OAuth. |
@@ -193,6 +207,10 @@ El script actualiza la contraseña, activa la cuenta y le asigna el rol `admin`.
 | `GET` | `/api/users` | Solo admin | Lista usuarios con email, rol y estado. |
 | `GET` | `/api/users/:id/active` | Solo admin | Comprueba si un usuario está activo. |
 | `DELETE` | `/api/users/:id` | Admin o el propio usuario | Elimina una cuenta. |
+| `POST` | `/api/matchmaking/join` | Autenticado | Entra en la cola o devuelve la partida asignada. |
+| `GET` | `/api/matchmaking/status` | Autenticado | Consulta si el jugador espera o ya tiene partida. |
+| `POST` | `/api/matchmaking/leave` | Autenticado | Sale de la cola de espera. |
+| `GET` | `/api/matchmaking/matches/:id` | Jugadores de la partida | Consulta una partida concreta. |
 
 Estados de cuenta:
 
@@ -235,3 +253,10 @@ El flujo de trabajo sigue GitHub Flow: rama por cambio, pruebas en local, pull r
 - **Hito 2:** frontend separado, registro/login local, hash, sesión y rutas protegidas.
 - **Hito 3:** Firestore, secretos por entorno, roles, autorización y logging.
 - **Hito 4:** OAuth con Google, confirmación de cuenta por correo, feedback de errores, README final y revisión de seguridad.
+
+## Hitos del Sprint 2
+
+- **Hito 1:** cola de emparejamiento con transacciones en Firestore, API y pantalla de búsqueda. Al encontrar oponente se muestra una mesa provisional; el juego completo llega en el siguiente hito.
+- **Hito 2:** lógica completa del dado mentiroso (turnos, apuestas, mentiras, pérdida de dados y fin de partida).
+- **Hito 3:** estética pirata, menú principal con `JUGADORES`, `BUSCAR OPONENTE` y `PERSONALIZAR DADO`, y mesa de juego refinada.
+- **Hito 4:** premios de colores al ganar, desbloqueo y selección del color de los dados.
