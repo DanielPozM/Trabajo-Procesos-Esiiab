@@ -309,3 +309,6 @@ El flujo de trabajo sigue GitHub Flow: rama por cambio, pruebas en local, pull r
 - **Hito 2:** lógica completa del dado mentiroso (turnos, apuestas, mentiras, pérdida de dados y fin de partida).
 - **Hito 3:** estética pirata, menú principal con `JUGADORES`, `BUSCAR OPONENTE` y `PERSONALIZAR DADO`, y mesa de juego refinada.
 - **Hito 4:** premios de colores al ganar, desbloqueo y selección del color de los dados.
+
+La memoria detallada del sprint, con decisiones de diseño, incidencias y
+métricas, está en [`docs/memoria-sprint2.md`](docs/memoria-sprint2.md).
