@@ -140,6 +140,7 @@ Las pruebas son unitarias, automatizadas y se ejecutan con un único comando. Cu
 - Una apuesta es válida si sube la cantidad, o mantiene la cantidad y sube la cara. La cantidad nunca puede superar el total de dados en juego.
 - Al acusar se revelan ambas manos. Si hay **menos dados** de la cara apostada que la cantidad indicada, pierde un dado quien apostó; en caso contrario, pierde un dado quien acusó.
 - La partida termina cuando un jugador se queda sin dados; gana el otro.
+- Si un jugador vuelve al panel durante una partida, abandona: la partida termina y el rival gana.
 - Toda la lógica vive en el servidor: el navegador nunca recibe los dados del rival antes de una acusación.
 
 ## Recompensas de color
@@ -252,6 +253,7 @@ El script actualiza la contraseña, activa la cuenta y le asigna el rol `admin`.
 | `GET` | `/api/matches/:id` | Jugadores de la partida | Estado privado de la partida (dados propios). |
 | `POST` | `/api/matches/:id/bids` | Jugador con el turno | Registra una apuesta `{ quantity, face }`. |
 | `POST` | `/api/matches/:id/challenge` | Jugador con el turno | Acusa de mentira y resuelve la ronda. |
+| `POST` | `/api/matches/:id/abandon` | Jugadores de la partida | Abandona la partida; el rival gana. |
 
 Estados de cuenta:
 
@@ -276,6 +278,7 @@ Los errores de negocio se devuelven como `{ "error": "CODIGO" }` y el frontend l
 - Control optimista de versión para que dos jugadores no pisen la misma jugada.
 - Los colores solo se pueden seleccionar si están desbloqueados; el servidor lo comprueba siempre.
 - El premio de cada partida se concede con una operación idempotente por jugador y partida.
+- Abandonar una partida también se resuelve en el servidor: cierra la partida, da la victoria al rival y no permite reabrirla.
 - Límite de tamaño del cuerpo JSON y respuestas de error sin trazas internas.
 
 ## Integración y despliegue continuo

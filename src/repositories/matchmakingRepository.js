@@ -34,6 +34,7 @@ export class MatchmakingRepository {
         for (const match of this.matches.values()) {
             if (
                 match.status === 'active' &&
+                match.game?.status !== 'finished' &&
                 match.playerIds.includes(String(userId))
             ) {
                 return match;

@@ -297,3 +297,63 @@ test('una tirada sin premio termina la partida sin desbloquear color', async () 
     const winner = await userRepository.findById(state.winnerId);
     assert.deepEqual(winner.diceColors, ['gray']);
 });
+
+test('abandonar una partida en curso da la victoria al rival y permite buscar otra', async () => {
+    const { match, matchmaking, repository, userRepository, gameService } =
+        await setup({ rewardRandom: () => 0 });
+
+    const initial = await gameService.getState(alice, match.id);
+    assert.equal(initial.status, 'playing');
+
+    const state = await gameService.abandon(alice, match.id);
+
+    assert.equal(state.status, 'finished');
+    assert.equal(state.winnerId, 'bob');
+    assert.equal(state.forfeitedBy, 'alice');
+    assert.equal(state.canBid, false);
+    assert.equal(state.reward.winnerId, 'bob');
+    assert.equal(state.reward.colorId, 'green');
+
+    const stored = await repository.getMatch(match.id);
+    assert.equal(stored.status, 'finished');
+    assert.equal(stored.game.status, 'finished');
+    assert.equal(stored.game.winnerId, 'bob');
+    assert.equal(stored.game.forfeitedBy, 'alice');
+
+    const winner = await userRepository.findById('bob');
+    assert.ok(winner.diceColors.includes('green'));
+
+    // El rival ve el mismo resultado y no puede seguir jugando.
+    const winnerView = await gameService.getState(bob, match.id);
+    assert.equal(winnerView.status, 'finished');
+    assert.deepEqual(winnerView.reward, state.reward);
+
+    await assert.rejects(
+        () =>
+            gameService.placeBid(bob, match.id, {
+                quantity: 1,
+                face: 1
+            }),
+        /GAME_FINISHED/
+    );
+
+    // Al volver a buscar, no se devuelve la partida terminada.
+    const requeue = await matchmaking.join(alice);
+    assert.equal(requeue.status, 'waiting');
+});
+
+test('abandonar antes de abrir la mesa también cierra la partida', async () => {
+    const { match, repository, gameService } = await setup({
+        rewardRandom: () => 0
+    });
+
+    const state = await gameService.abandon(alice, match.id);
+
+    assert.equal(state.status, 'finished');
+    assert.equal(state.winnerId, 'bob');
+    assert.equal(state.reward.winnerId, 'bob');
+
+    const stored = await repository.getMatch(match.id);
+    assert.equal(stored.status, 'finished');
+    assert.equal(stored.game.status, 'finished');
+});

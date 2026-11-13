@@ -159,5 +159,12 @@ export const apiClient = {
             `/api/matches/${encodeURIComponent(matchId)}/challenge`,
             { method: 'POST' }
         );
+    },
+
+    abandonGame(matchId) {
+        return request(
+            `/api/matches/${encodeURIComponent(matchId)}/abandon`,
+            { method: 'POST' }
+        );
     }
 };

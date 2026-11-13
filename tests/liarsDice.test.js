@@ -5,6 +5,7 @@ import {
     DICE_PER_PLAYER,
     applyBid,
     applyChallenge,
+    applyForfeit,
     createGame,
     nextMinimumBid,
     toPublicGame,
@@ -213,6 +214,45 @@ test('la partida termina cuando un jugador se queda sin dados', () => {
     assert.equal(game.status, 'finished');
     assert.equal(game.history.at(-1).type, 'gameOver');
     assert.ok(['alice', 'bob'].includes(game.winnerId));
+});
+
+test('abandonar entrega la victoria al rival y termina la partida', () => {
+    const game = newGame();
+    const next = applyForfeit(game, 'alice', { now });
+
+    assert.equal(next.status, 'finished');
+    assert.equal(next.winnerId, 'bob');
+    assert.equal(next.forfeitedBy, 'alice');
+    assert.equal(next.turnPlayerId, null);
+    assert.equal(next.currentBid, null);
+    assert.equal(next.history.at(-1).type, 'forfeit');
+    assert.equal(next.history.at(-1).playerId, 'alice');
+    assert.equal(next.history.at(-1).winnerId, 'bob');
+
+    // El estado original no se muta.
+    assert.equal(game.status, 'playing');
+    assert.equal(game.forfeitedBy, undefined);
+});
+
+test('abandonar una partida ya terminada no cambia el ganador', () => {
+    const game = newGame();
+    const finished = applyForfeit(game, 'alice', { now });
+    const again = applyForfeit(finished, 'bob', { now });
+
+    assert.equal(again, finished);
+    assert.equal(again.winnerId, 'bob');
+    assert.equal(again.forfeitedBy, 'alice');
+});
+
+test('la vista pública informa del abandono y desactiva las acciones', () => {
+    const game = applyForfeit(newGame(), 'alice', { now });
+    const view = toPublicGame(game, 'bob');
+
+    assert.equal(view.status, 'finished');
+    assert.equal(view.winnerId, 'bob');
+    assert.equal(view.forfeitedBy, 'alice');
+    assert.equal(view.canBid, false);
+    assert.equal(view.canChallenge, false);
 });
 
 test('la vista pública oculta los dados del rival', () => {
