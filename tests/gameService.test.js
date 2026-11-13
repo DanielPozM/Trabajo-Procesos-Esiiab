@@ -4,6 +4,8 @@ import assert from 'node:assert/strict';
 import { MatchmakingRepository } from '../src/repositories/matchmakingRepository.js';
 import { MatchmakingService } from '../src/services/matchmakingService.js';
 import { GameService } from '../src/services/gameService.js';
+import { UserRepository } from '../src/repositories/userRepository.js';
+import { UserService } from '../src/services/userService.js';
 
 const alice = { id: 'alice', email: 'alice@test.com' };
 const bob = { id: 'bob', email: 'bob@test.com' };
@@ -13,19 +15,52 @@ let clock = 2_000_000;
 const now = () => clock;
 const lowRandom = min => min;
 
-async function setup() {
+async function setup({ rewardRandom } = {}) {
+    const userRepository = new UserRepository();
+    const userService = new UserService(userRepository, {
+        emailService: {
+            async sendVerificationEmail() {
+                return { delivered: true };
+            }
+        }
+    });
+
+    await userRepository.create({
+        ...alice,
+        active: true,
+        role: 'user',
+        diceColors: ['gray', 'blue'],
+        selectedDiceColor: 'blue'
+    });
+    await userRepository.create({
+        ...bob,
+        active: true,
+        role: 'user'
+    });
+
     const repository = new MatchmakingRepository({ now, ttlMs: 60_000 });
     const matchmaking = new MatchmakingService(repository, { now });
 
-    await matchmaking.join(alice);
-    const { match } = await matchmaking.join(bob);
+    await matchmaking.join(await userService.getUser('alice'));
+    const { match } = await matchmaking.join(
+        await userService.getUser('bob')
+    );
 
     const gameService = new GameService(repository, {
         now,
-        randomInt: lowRandom
+        randomInt: lowRandom,
+        rewardRandomInt: rewardRandom,
+        userService
     });
 
-    return { repository, matchmaking, match, gameService };
+    return {
+        repository,
+        userRepository,
+        userService,
+        matchmaking,
+        match,
+        gameService
+    };
 }
 
 function userById(userId) {
@@ -62,6 +97,8 @@ test('cada jugador ve solo sus propios dados', async () => {
     assert.deepEqual(aliceSeat.dice, aliceView.yourDice);
     assert.equal(bobSeat.dice, null);
     assert.equal(bobSeat.diceCount, 4);
+    assert.equal(aliceSeat.diceColor, 'blue');
+    assert.equal(bobSeat.diceColor, 'gray');
     assert.equal(aliceView.matchId, match.id);
     assert.equal(aliceView.round, bobView.round);
 });
@@ -195,4 +232,68 @@ test('una acción inválida no modifica la partida', async () => {
 
     assert.equal(storedAfter.version, storedBefore.version);
     assert.deepEqual(storedAfter.game, storedBefore.game);
+});
+
+async function playToTheEnd(gameService, match) {
+    let state = await gameService.getState(alice, match.id);
+
+    while (state.status === 'playing') {
+        const bidder = userById(state.turnPlayerId);
+        state = await gameService.placeBid(bidder, match.id, {
+            quantity: 1,
+            face: 2
+        });
+
+        const challenger = userById(state.turnPlayerId);
+        state = await gameService.challenge(challenger, match.id);
+    }
+
+    return state;
+}
+
+test('al terminar, el ganador recibe un color y se guarda en su perfil', async () => {
+    const { match, repository, userRepository, gameService } = await setup({
+        rewardRandom: () => 0
+    });
+
+    const state = await playToTheEnd(gameService, match);
+
+    assert.equal(state.status, 'finished');
+    assert.ok(state.reward);
+    assert.equal(state.reward.matchId, match.id);
+    assert.equal(state.reward.winnerId, state.winnerId);
+    assert.equal(state.reward.colorId, 'green');
+    assert.equal(state.reward.isNew, true);
+
+    const stored = await repository.getMatch(match.id);
+    assert.deepEqual(stored.reward, state.reward);
+
+    const winner = await userRepository.findById(state.winnerId);
+    assert.ok(winner.diceColors.includes('green'));
+
+    // Consultar de nuevo la partida no vuelve a conceder el premio.
+    const winnerUser = userById(state.winnerId);
+    const again = await gameService.getState(winnerUser, match.id);
+    const winnerAfter = await userRepository.findById(state.winnerId);
+
+    assert.deepEqual(again.reward, state.reward);
+    assert.equal(
+        winnerAfter.diceColors.filter(color => color === 'green').length,
+        1
+    );
+});
+
+test('una tirada sin premio termina la partida sin desbloquear color', async () => {
+    const { match, userRepository, gameService } = await setup({
+        rewardRandom: () => 99
+    });
+
+    const state = await playToTheEnd(gameService, match);
+
+    assert.equal(state.status, 'finished');
+    assert.equal(state.reward.colorId, null);
+    assert.equal(state.reward.isNew, false);
+
+    const winner = await userRepository.findById(state.winnerId);
+    assert.deepEqual(winner.diceColors, ['gray']);
 });

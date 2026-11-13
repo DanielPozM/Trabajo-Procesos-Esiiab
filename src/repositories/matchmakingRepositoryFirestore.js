@@ -100,12 +100,14 @@ export class MatchmakingRepositoryFirestore {
                         {
                             userId: opponent.userId,
                             email: opponent.email,
-                            displayName: opponent.displayName
+                            displayName: opponent.displayName,
+                            diceColor: opponent.diceColor || 'gray'
                         },
                         {
                             userId: entry.userId,
                             email: entry.email,
-                            displayName: entry.displayName
+                            displayName: entry.displayName,
+                            diceColor: entry.diceColor || 'gray'
                         }
                     ],
                     createdAt: new Date(now).toISOString(),
@@ -253,5 +255,20 @@ export class MatchmakingRepositoryFirestore {
 
             return updated;
         });
+    }
+
+    /**
+     * El premio se guarda aparte del juego para no alterar la versión de la
+     * partida ni provocar conflictos con la última jugada.
+     */
+    async saveReward(matchId, reward) {
+        const matchRef = this.matchesCollection.doc(String(matchId));
+        const doc = await matchRef.get();
+
+        if (!doc.exists) throw new Error('MATCH_NOT_FOUND');
+
+        await matchRef.set({ reward }, { merge: true });
+
+        return { ...doc.data(), reward };
     }
 }

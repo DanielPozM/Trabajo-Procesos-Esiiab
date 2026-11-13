@@ -49,6 +49,9 @@ const ERROR_MESSAGES = {
     BID_FACE_INVALID: 'La cara del dado no es válida.',
     BID_TOO_LOW: 'Tu apuesta debe ser mayor que la anterior.',
     CANNOT_CHALLENGE: 'Todavía no hay ninguna apuesta que acusar.',
+    DICE_COLOR_INVALID: 'Ese color de dado no existe.',
+    DICE_COLOR_LOCKED:
+        'Todavía no has desbloqueado ese color. Gana una partida para conseguirlo.',
     INTERNAL_ERROR: 'Ha ocurrido un error inesperado. Inténtalo de nuevo.'
 };
 
@@ -67,11 +70,13 @@ const registerView = document.getElementById('register-view');
 const dashboardView = document.getElementById('dashboard-view');
 const matchmakingView = document.getElementById('matchmaking-view');
 const gameView = document.getElementById('game-view');
+const customizeView = document.getElementById('customize-view');
 
 const headerUser = document.getElementById('header-user');
 const headerUsername = document.getElementById('header-username');
 
 const usersContainer = document.getElementById('users-container');
+const diceColorsContainer = document.getElementById('dice-colors');
 const alertContainer = document.getElementById('alert-container');
 
 const usersTitle = document.getElementById('users-title');
@@ -96,6 +101,7 @@ function showView(view) {
         loginView,
         registerView,
         dashboardView,
+        customizeView,
         matchmakingView,
         gameView
     ];
@@ -108,6 +114,7 @@ function showView(view) {
 
     const authenticatedViews = [
         dashboardView,
+        customizeView,
         matchmakingView,
         gameView
     ];
@@ -220,6 +227,17 @@ document.getElementById('register-login').addEventListener('click', () => {
 // ========================================
 // BOTONES DE EMPAREJAMIENTO
 // ========================================
+
+document
+    .getElementById('customize-dice')
+    .addEventListener('click', showCustomize);
+
+document
+    .getElementById('customize-back')
+    .addEventListener('click', () => {
+        if (currentUser) showDashboard(currentUser);
+        else showView(welcomeView);
+    });
 
 document
     .getElementById('find-opponent')
@@ -612,6 +630,162 @@ async function deleteUser(user, viewer) {
 }
 
 // ========================================
+// PERSONALIZAR DADO
+// ========================================
+
+const DICE_COLOR_NAMES = {
+    gray: 'gris',
+    green: 'verde',
+    blue: 'azul',
+    purple: 'morado',
+    yellow: 'amarillo',
+    red: 'rojo',
+    pink: 'rosa'
+};
+
+function diceColorName(colorId) {
+    return DICE_COLOR_NAMES[colorId] || DICE_COLOR_NAMES.gray;
+}
+
+async function showCustomize() {
+    if (!currentUser) {
+        showView(welcomeView);
+        return;
+    }
+
+    stopMatchmakingPolling();
+    stopGamePolling();
+
+    showView(customizeView);
+    updateHeader(currentUser);
+
+    if (diceColorsContainer) {
+        diceColorsContainer.innerHTML = `
+            <div class="loading">
+                Cargando colores...
+            </div>
+        `;
+    }
+
+    await loadDiceColors();
+}
+
+async function loadDiceColors() {
+    try {
+        const state = await apiClient.getDiceColors();
+        renderDiceColors(state);
+    } catch (error) {
+        console.error(error);
+
+        if (error.code === 'UNAUTHENTICATED') {
+            currentUser = null;
+            headerUsername.textContent = '';
+            showView(welcomeView);
+            showAlert(messageFor(error), 'error');
+            return;
+        }
+
+        if (diceColorsContainer) {
+            diceColorsContainer.innerHTML = `
+                <div class="empty-users">
+                    <div class="empty-icon">🎨</div>
+                    <h3>No se pudieron cargar los colores</h3>
+                    <p>${escapeHtml(messageFor(error))}</p>
+                </div>
+            `;
+        }
+    }
+}
+
+function renderDiceColors(state) {
+    if (!state) return;
+
+    if (currentUser) {
+        currentUser.selectedDiceColor = state.selected;
+    }
+
+    const selected =
+        state.colors.find(color => color.id === state.selected) ||
+        state.colors[0];
+
+    const preview = document.getElementById('customize-preview-die');
+
+    if (preview) {
+        preview.className = `die preview-die color-${state.selected}`;
+        preview.textContent = '6';
+    }
+
+    const selectedName = document.getElementById('customize-selected-name');
+
+    if (selectedName) {
+        selectedName.textContent = `Dado ${selected.name.toLowerCase()}`;
+    }
+
+    if (!diceColorsContainer) return;
+
+    diceColorsContainer.innerHTML = state.colors
+        .map(color => {
+            const classes = ['color-option'];
+
+            if (color.selected) classes.push('selected');
+            if (!color.unlocked) classes.push('locked');
+
+            const chance = color.base
+                ? 'Siempre disponible'
+                : `${color.weight} %`;
+
+            const status = !color.unlocked
+                ? `<span class="color-chance">${chance}</span>
+                   <span class="color-lock">🔒 Bloqueado</span>`
+                : color.selected
+                  ? '<span class="color-selected">Seleccionado</span>'
+                  : '<span class="color-chance">Disponible</span>';
+
+            return `
+                <button class="${classes.join(' ')}"
+                        type="button"
+                        data-color-id="${color.id}"
+                        aria-pressed="${color.selected}"
+                        ${color.unlocked ? '' : 'disabled'}>
+                    <span class="die color-die color-${color.id}">?</span>
+                    <span class="color-name">${escapeHtml(color.name)}</span>
+                    ${status}
+                </button>
+            `;
+        })
+        .join('');
+
+    diceColorsContainer
+        .querySelectorAll('.color-option:not(.locked)')
+        .forEach(button => {
+            button.addEventListener('click', () =>
+                chooseDiceColor(button.dataset.colorId)
+            );
+        });
+}
+
+async function chooseDiceColor(colorId) {
+    if (!colorId) return;
+
+    try {
+        const state = await apiClient.selectDiceColor(colorId);
+
+        renderDiceColors(state);
+        showAlert(`Dado ${diceColorName(state.selected)} seleccionado`);
+    } catch (error) {
+        console.error(error);
+
+        if (error.code === 'UNAUTHENTICATED') {
+            currentUser = null;
+            headerUsername.textContent = '';
+            showView(welcomeView);
+        }
+
+        showAlert(messageFor(error), 'error');
+    }
+}
+
+// ========================================
 // EMPAREJAMIENTO
 // ========================================
 
@@ -692,23 +866,35 @@ function playerName(state, userId) {
     return player?.displayName || player?.email || 'Jugador';
 }
 
-function diceHtml(values) {
+function playerColor(state, userId) {
+    const player = (state?.players || []).find(
+        item => String(item.userId) === String(userId)
+    );
+
+    return player?.diceColor || 'gray';
+}
+
+function diceHtml(values, colorId = 'gray') {
     return values
-        .map(value => `<div class="die">${escapeHtml(value)}</div>`)
+        .map(
+            value =>
+                `<div class="die color-${colorId}">${escapeHtml(value)}</div>`
+        )
         .join('');
 }
 
-function hiddenDiceHtml(count) {
+function hiddenDiceHtml(count, colorId = 'gray') {
     return Array.from(
         { length: count },
-        () => '<div class="die hidden">?</div>'
+        () => `<div class="die hidden color-${colorId}">?</div>`
     ).join('');
 }
 
 function seatHtml(player, { showDice }) {
+    const color = player.diceColor || 'gray';
     const dice = showDice
-        ? diceHtml(player.dice || [])
-        : hiddenDiceHtml(player.diceCount || 0);
+        ? diceHtml(player.dice || [], color)
+        : hiddenDiceHtml(player.diceCount || 0, color);
 
     const count = player.diceCount || 0;
 
@@ -810,6 +996,27 @@ function renderResult(state) {
 
     element.hidden = false;
     element.className = `game-result ${youWin ? 'win' : 'lose'}`;
+
+    const reward = state.reward;
+    let rewardHtml = '';
+
+    if (youWin && reward) {
+        if (reward.colorId) {
+            rewardHtml = reward.isNew
+                ? `<div class="reward-line">🎉 Has desbloqueado el
+                       <span class="die reward-die color-${reward.colorId}">?</span>
+                       dado ${diceColorName(reward.colorId)}</div>`
+                : `<div class="reward-line">Has vuelto a obtener el dado
+                       ${diceColorName(reward.colorId)}, que ya tenías.</div>`;
+        } else {
+            rewardHtml = `
+                <div class="reward-line">
+                    Esta vez la tirada no ha dado ningún color nuevo.
+                </div>
+            `;
+        }
+    }
+
     element.innerHTML = `
         <h2>${youWin ? '¡Has ganado la partida!' : 'Has perdido la partida'}</h2>
         <p>${
@@ -817,6 +1024,7 @@ function renderResult(state) {
                 ? 'Tu rival se ha quedado sin dados.'
                 : 'Te has quedado sin dados.'
         }${detail}</p>
+        ${rewardHtml}
     `;
 }
 
@@ -846,7 +1054,7 @@ function renderReveal(state) {
                         ${escapeHtml(playerName(state, userId))}
                     </span>
                     <div class="seat-dice">
-                        ${diceHtml(dice)}
+                        ${diceHtml(dice, playerColor(state, userId))}
                     </div>
                 </div>
             `

@@ -4,6 +4,8 @@ import {
     createGame,
     toPublicGame
 } from './liarsDice.js';
+import { rollDiceColor } from '../lib/diceColors.js';
+import { warn } from '../lib/logger.js';
 
 function attachPlayers(state, match) {
     const playersById = new Map(
@@ -23,7 +25,8 @@ function attachPlayers(state, match) {
                 ...player,
                 displayName:
                     info.displayName || info.email || 'Jugador',
-                email: info.email || null
+                email: info.email || null,
+                diceColor: info.diceColor || 'gray'
             };
         })
     };
@@ -37,10 +40,20 @@ function attachPlayers(state, match) {
  * privada para cada jugador.
  */
 export class GameService {
-    constructor(repository, { now = () => Date.now(), randomInt } = {}) {
+    constructor(
+        repository,
+        {
+            now = () => Date.now(),
+            randomInt,
+            rewardRandomInt,
+            userService
+        } = {}
+    ) {
         this.repository = repository;
         this.now = now;
         this.randomInt = randomInt;
+        this.rewardRandomInt = rewardRandomInt;
+        this.userService = userService;
     }
 
     _createGame(playerIds) {
@@ -109,15 +122,80 @@ export class GameService {
     }
 
     _view(match, viewerId) {
-        return attachPlayers(
-            toPublicGame(match.game, viewerId),
-            match
-        );
+        return {
+            ...attachPlayers(
+                toPublicGame(match.game, viewerId),
+                match
+            ),
+            reward: match.reward ? { ...match.reward } : null
+        };
+    }
+
+    /**
+     * Concede (una sola vez) el premio de color al ganador. Si el premio ya
+     * estaba guardado en la partida no se vuelve a consultar al usuario.
+     */
+    async _grantReward(match) {
+        const game = match?.game;
+
+        if (game?.status !== 'finished' || !game.winnerId) {
+            return null;
+        }
+
+        if (match.reward) {
+            return match.reward;
+        }
+
+        if (!this.userService?.claimDiceReward) {
+            return null;
+        }
+
+        const colorId = rollDiceColor(this.rewardRandomInt);
+        let claim;
+
+        try {
+            claim = await this.userService.claimDiceReward(
+                game.winnerId,
+                match.id,
+                colorId
+            );
+        } catch (error) {
+            warn(
+                'No se pudo conceder el premio de la partida',
+                match.id,
+                error.message
+            );
+            return null;
+        }
+
+        const reward = {
+            matchId: match.id,
+            winnerId: game.winnerId,
+            colorId: claim.colorId,
+            isNew: claim.isNew,
+            awardedAt: new Date(this.now()).toISOString()
+        };
+
+        match.reward = reward;
+
+        try {
+            await this.repository.saveReward(match.id, reward);
+        } catch (error) {
+            warn(
+                'No se pudo guardar el premio de la partida',
+                match.id,
+                error.message
+            );
+        }
+
+        return reward;
     }
 
     async getState(user, matchId) {
         const match = await this._loadMatch(user, matchId);
         const current = await this._ensureGame(match);
+
+        await this._grantReward(current);
 
         return this._view(current, user.id);
     }
@@ -133,6 +211,8 @@ export class GameService {
                     game: nextGame,
                     expectedVersion: current.version ?? 0
                 });
+
+                await this._grantReward(saved);
 
                 return this._view(saved, user.id);
             } catch (error) {

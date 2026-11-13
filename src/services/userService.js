@@ -4,6 +4,13 @@ import bcrypt from 'bcryptjs';
 import { config } from '../config.js';
 import { createEmailService } from './emailService.js';
 import { info, error as logError } from '../lib/logger.js';
+import {
+    diceColorState,
+    isDiceColor,
+    isRewardColor,
+    normalizeDiceColors,
+    selectedDiceColor
+} from '../lib/diceColors.js';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MIN_PASSWORD_LENGTH = 8;
@@ -38,10 +45,15 @@ function publicUser(user) {
         emailVerificationExpiresAt,
         lastVerificationSentAt,
         oauthId,
+        diceRewards,
         ...safe
     } = user;
 
-    return safe;
+    return {
+        ...safe,
+        diceColors: normalizeDiceColors(safe.diceColors),
+        selectedDiceColor: selectedDiceColor(safe)
+    };
 }
 
 export class UserService {
@@ -377,6 +389,57 @@ export class UserService {
         if (!user) throw new Error('USER_NOT_FOUND');
 
         return Boolean(user.active);
+    }
+
+    async getDiceColors(id) {
+        const user = await this.repository.findById(id);
+
+        if (!user) throw new Error('USER_NOT_FOUND');
+
+        return diceColorState(user);
+    }
+
+    async selectDiceColor(id, colorId) {
+        const normalized = String(colorId || '').trim();
+
+        if (!isDiceColor(normalized)) {
+            throw new Error('DICE_COLOR_INVALID');
+        }
+
+        const user = await this.repository.findById(id);
+
+        if (!user) throw new Error('USER_NOT_FOUND');
+
+        if (!normalizeDiceColors(user.diceColors).includes(normalized)) {
+            throw new Error('DICE_COLOR_LOCKED');
+        }
+
+        const updated = await this.repository.updateById(id, {
+            selectedDiceColor: normalized
+        });
+
+        if (!updated) throw new Error('USER_NOT_FOUND');
+
+        info('Color de dados seleccionado', updated.email, normalized);
+
+        return diceColorState(updated);
+    }
+
+    /**
+     * Registra el premio de una partida una única vez por jugador y partida.
+     * Si la petición se reintenta, el repositorio devuelve el premio ya
+     * concedido sin volver a desbloquear ni a sortear nada.
+     */
+    async claimDiceReward(id, matchId, colorId) {
+        if (colorId !== null && !isRewardColor(colorId)) {
+            throw new Error('DICE_COLOR_INVALID');
+        }
+
+        return this.repository.claimDiceReward(
+            id,
+            matchId,
+            colorId ?? null
+        );
     }
 
     async deleteUser(requesterId, targetId) {

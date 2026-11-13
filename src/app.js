@@ -136,7 +136,9 @@ export const matchmakingService = new MatchmakingService(
     matchmakingRepository
 );
 
-export const gameService = new GameService(matchmakingRepository);
+export const gameService = new GameService(matchmakingRepository, {
+    userService: service
+});
 
 app.use('/api/auth', authRoutes(service));
 app.use('/api/users', userRoutes(service));

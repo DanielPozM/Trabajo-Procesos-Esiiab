@@ -145,6 +145,7 @@ test('la partida no expone datos internos de los usuarios', async () => {
     ]);
 
     assert.deepEqual(Object.keys(match.players[0]).sort(), [
+        'diceColor',
         'displayName',
         'email',
         'userId'

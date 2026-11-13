@@ -55,7 +55,8 @@ export class MatchmakingRepository {
             players: entries.map(entry => ({
                 userId: entry.userId,
                 email: entry.email,
-                displayName: entry.displayName
+                displayName: entry.displayName,
+                diceColor: entry.diceColor || 'gray'
             })),
             createdAt: new Date(now).toISOString(),
             game: null
@@ -155,6 +156,20 @@ export class MatchmakingRepository {
         if (game?.status === 'finished') {
             match.status = 'finished';
         }
+
+        return match;
+    }
+
+    /**
+     * Guarda el premio de la partida sin tocar la versión del juego: es
+     * información de presentación, no una jugada.
+     */
+    async saveReward(matchId, reward) {
+        const match = this.matches.get(String(matchId));
+
+        if (!match) throw new Error('MATCH_NOT_FOUND');
+
+        match.reward = reward;
 
         return match;
     }

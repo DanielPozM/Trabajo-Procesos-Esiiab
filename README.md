@@ -129,7 +129,8 @@ Las pruebas son unitarias, automatizadas y se ejecutan con un único comando. Cu
 - pérdida de un dado por ronda y fin de partida al quedarse sin dados;
 - vista privada que oculta los dados del rival;
 - apertura simultánea de la mesa por ambos jugadores;
-- acciones inválidas que no modifican la partida.
+- acciones inválidas que no modifican la partida;
+- sorteo de colores, desbloqueo idempotente y selección de color.
 
 ## Reglas del dado mentiroso
 
@@ -140,6 +141,22 @@ Las pruebas son unitarias, automatizadas y se ejecutan con un único comando. Cu
 - Al acusar se revelan ambas manos. Si hay **menos dados** de la cara apostada que la cantidad indicada, pierde un dado quien apostó; en caso contrario, pierde un dado quien acusó.
 - La partida termina cuando un jugador se queda sin dados; gana el otro.
 - Toda la lógica vive en el servidor: el navegador nunca recibe los dados del rival antes de una acusación.
+
+## Recompensas de color
+
+El dado gris es el color base y está disponible desde el principio. Al ganar una partida se hace **una tirada de recompensa**:
+
+| Color | Probabilidad |
+| --- | --- |
+| Verde | 50 % |
+| Azul | 20 % |
+| Morado | 10 % |
+| Amarillo | 5 % |
+| Rojo | 4 % |
+| Rosa | 1 % |
+| Sin premio | 10 % |
+
+Los colores desbloqueados quedan guardados en el perfil. Antes de buscar partida se elige uno desde **Personalizar dado**; ese color se guarda en la partida y ambos jugadores lo ven en la mesa. La concesión es idempotente por jugador y partida: reintentar una petición o consultar la partida terminada no duplica desbloqueos ni vuelve a sortear.
 
 ## Variables de entorno
 
@@ -225,6 +242,8 @@ El script actualiza la contraseña, activa la cuenta y le asigna el rol `admin`.
 | `GET` | `/api/auth/oauth/google/callback` | Público | Callback de Google. |
 | `GET` | `/api/users` | Solo admin | Lista usuarios con email, rol y estado. |
 | `GET` | `/api/users/:id/active` | Solo admin | Comprueba si un usuario está activo. |
+| `GET` | `/api/users/me/dice-colors` | Autenticado | Catálogo de colores, desbloqueo y selección actual. |
+| `PATCH` | `/api/users/me/dice-color` | Autenticado | Selecciona un color desbloqueado `{ colorId }`. |
 | `DELETE` | `/api/users/:id` | Admin o el propio usuario | Elimina una cuenta. |
 | `POST` | `/api/matchmaking/join` | Autenticado | Entra en la cola o devuelve la partida asignada. |
 | `GET` | `/api/matchmaking/status` | Autenticado | Consulta si el jugador espera o ya tiene partida. |
@@ -255,6 +274,8 @@ Los errores de negocio se devuelven como `{ "error": "CODIGO" }` y el frontend l
 - Los dados del rival no se envían al navegador hasta que se revelan en una acusación.
 - Acciones de juego validadas en el servidor (turno, apuesta y propiedad de la partida).
 - Control optimista de versión para que dos jugadores no pisen la misma jugada.
+- Los colores solo se pueden seleccionar si están desbloqueados; el servidor lo comprueba siempre.
+- El premio de cada partida se concede con una operación idempotente por jugador y partida.
 - Límite de tamaño del cuerpo JSON y respuestas de error sin trazas internas.
 
 ## Integración y despliegue continuo

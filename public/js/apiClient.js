@@ -99,6 +99,17 @@ export const apiClient = {
         return request(`/api/users/${encodeURIComponent(id)}/active`);
     },
 
+    getDiceColors() {
+        return request('/api/users/me/dice-colors');
+    },
+
+    selectDiceColor(colorId) {
+        return request(
+            '/api/users/me/dice-color',
+            jsonOptions('PATCH', { colorId })
+        );
+    },
+
     async deleteUser(id) {
         await request(`/api/users/${encodeURIComponent(id)}`, {
             method: 'DELETE'

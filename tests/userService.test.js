@@ -320,3 +320,104 @@ test('init crea el administrador inicial desde variables de entorno', async () =
         }
     }
 });
+
+test('el perfil empieza con el dado gris y solo permite colores desbloqueados', async () => {
+    const { service } = makeService();
+
+    const user = await service.repository.create({
+        email: 'colors@test.com',
+        active: true,
+        role: 'user'
+    });
+
+    const initial = await service.getDiceColors(user.id);
+    const gray = initial.colors.find(color => color.id === 'gray');
+    const blue = initial.colors.find(color => color.id === 'blue');
+
+    assert.equal(initial.selected, 'gray');
+    assert.equal(gray.unlocked, true);
+    assert.equal(gray.selected, true);
+    assert.equal(blue.unlocked, false);
+
+    await assert.rejects(
+        () => service.selectDiceColor(user.id, 'blue'),
+        /DICE_COLOR_LOCKED/
+    );
+
+    await assert.rejects(
+        () => service.selectDiceColor(user.id, 'inventado'),
+        /DICE_COLOR_INVALID/
+    );
+
+    const state = await service.selectDiceColor(user.id, 'gray');
+    assert.equal(state.selected, 'gray');
+});
+
+test('un premio desbloquea el color una sola vez por partida', async () => {
+    const { service } = makeService();
+
+    const user = await service.repository.create({
+        email: 'rewards@test.com',
+        active: true,
+        role: 'user'
+    });
+
+    const first = await service.claimDiceReward(
+        user.id,
+        'match_1',
+        'green'
+    );
+
+    assert.equal(first.awarded, true);
+    assert.equal(first.colorId, 'green');
+    assert.equal(first.isNew, true);
+
+    // Reintento de la misma partida con otro color: se conserva el original
+    // y no se desbloquea nada nuevo.
+    const retry = await service.claimDiceReward(
+        user.id,
+        'match_1',
+        'blue'
+    );
+
+    assert.equal(retry.awarded, false);
+    assert.equal(retry.colorId, 'green');
+    assert.equal(retry.isNew, true);
+
+    let state = await service.getDiceColors(user.id);
+
+    assert.equal(
+        state.colors.find(color => color.id === 'green').unlocked,
+        true
+    );
+    assert.equal(
+        state.colors.find(color => color.id === 'blue').unlocked,
+        false
+    );
+
+    // Repetir un color ya desbloqueado no lo duplica.
+    const duplicate = await service.claimDiceReward(
+        user.id,
+        'match_2',
+        'green'
+    );
+
+    assert.equal(duplicate.awarded, true);
+    assert.equal(duplicate.isNew, false);
+
+    // Una tirada sin premio queda registrada como partida premiada sin color.
+    const empty = await service.claimDiceReward(user.id, 'match_3', null);
+
+    assert.equal(empty.awarded, true);
+    assert.equal(empty.colorId, null);
+    assert.equal(empty.isNew, false);
+
+    const profile = await service.getUser(user.id);
+
+    assert.deepEqual(profile.diceColors, ['gray', 'green']);
+    assert.equal(profile.selectedDiceColor, 'gray');
+    assert.equal(profile.diceRewards, undefined);
+
+    state = await service.selectDiceColor(user.id, 'green');
+    assert.equal(state.selected, 'green');
+});
