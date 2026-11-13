@@ -1,6 +1,12 @@
 import fs from 'fs';
 import path from 'path';
 
+import {
+  BASE_DICE_COLOR,
+  capRewardHistory,
+  normalizeDiceColors
+} from '../lib/diceColors.js';
+
 // By default use in-memory storage unless DB_FILE is provided.
 const DEFAULT_DB_FILE = process.env.DB_FILE ?? ':memory:';
 
@@ -94,6 +100,57 @@ export class UserRepository {
   findByEmail(email) {
     if (!email) return null;
     return this.findAll().find(u => String(u.email || '').toLowerCase() === email.toLowerCase()) ?? null;
+  }
+
+  /**
+   * Concede el premio de una partida de forma idempotente. En memoria la
+   * operación es síncrona, así que dos peticiones no pueden duplicar el
+   * desbloqueo.
+   */
+  async claimDiceReward(userId, matchId, colorId) {
+    const key = String(userId);
+    const existing = this.users.get(key);
+
+    if (!existing) throw new Error('USER_NOT_FOUND');
+
+    const rewards = { ...(existing.diceRewards || {}) };
+    const previous = rewards[String(matchId)];
+
+    if (previous) {
+      return {
+        awarded: false,
+        colorId: previous.colorId ?? null,
+        isNew: Boolean(previous.isNew),
+        user: existing
+      };
+    }
+
+    const unlocked = normalizeDiceColors(existing.diceColors);
+    const isNew = Boolean(colorId) && !unlocked.includes(colorId);
+    const diceColors = isNew ? [...unlocked, colorId] : unlocked;
+
+    rewards[String(matchId)] = {
+      colorId: colorId ?? null,
+      isNew,
+      at: new Date().toISOString()
+    };
+
+    const updated = {
+      ...existing,
+      diceColors,
+      diceRewards: capRewardHistory(rewards),
+      selectedDiceColor: existing.selectedDiceColor || BASE_DICE_COLOR
+    };
+
+    this.users.set(key, updated);
+    this._persist();
+
+    return {
+      awarded: true,
+      colorId: colorId ?? null,
+      isNew,
+      user: updated
+    };
   }
 
   deleteById(id) {

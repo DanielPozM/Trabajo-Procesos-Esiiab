@@ -1,5 +1,11 @@
 import { Firestore } from '@google-cloud/firestore';
 
+import {
+    BASE_DICE_COLOR,
+    capRewardHistory,
+    normalizeDiceColors
+} from '../lib/diceColors.js';
+
 export class UserRepositoryFirestore {
     constructor() {
         const projectId =
@@ -138,6 +144,63 @@ export class UserRepositoryFirestore {
         return snapshot.empty
             ? null
             : snapshot.docs[0].data();
+    }
+
+    /**
+     * Concede el premio de una partida dentro de una transacción: si dos
+     * peticiones llegan a la vez (o el cliente reintenta), solo una puede
+     * desbloquear el color.
+     */
+    async claimDiceReward(userId, matchId, colorId) {
+        const docRef = this.collection.doc(String(userId));
+
+        return this.client.runTransaction(async transaction => {
+            const doc = await transaction.get(docRef);
+
+            if (!doc.exists) throw new Error('USER_NOT_FOUND');
+
+            const data = doc.data() || {};
+            const rewards = { ...(data.diceRewards || {}) };
+            const previous = rewards[String(matchId)];
+
+            if (previous) {
+                return {
+                    awarded: false,
+                    colorId: previous.colorId ?? null,
+                    isNew: Boolean(previous.isNew),
+                    user: data
+                };
+            }
+
+            const unlocked = normalizeDiceColors(data.diceColors);
+            const isNew = Boolean(colorId) && !unlocked.includes(colorId);
+            const diceColors = isNew
+                ? [...unlocked, colorId]
+                : unlocked;
+
+            rewards[String(matchId)] = {
+                colorId: colorId ?? null,
+                isNew,
+                at: new Date().toISOString()
+            };
+
+            const patch = {
+                id: docRef.id,
+                diceColors,
+                diceRewards: capRewardHistory(rewards),
+                selectedDiceColor:
+                    data.selectedDiceColor || BASE_DICE_COLOR
+            };
+
+            transaction.set(docRef, patch, { merge: true });
+
+            return {
+                awarded: true,
+                colorId: colorId ?? null,
+                isNew,
+                user: { ...data, ...patch }
+            };
+        });
     }
 
     async deleteById(id) {

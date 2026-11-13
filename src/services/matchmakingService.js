@@ -1,3 +1,5 @@
+import { selectedDiceColor } from '../lib/diceColors.js';
+
 function displayNameFor(email) {
     const localPart = String(email || '').split('@')[0] || 'Jugador';
     const cleaned = localPart.replace(/[._-]+/g, ' ').trim();
@@ -15,7 +17,8 @@ function publicMatch(match) {
         players: (match.players || []).map(player => ({
             userId: player.userId,
             email: player.email,
-            displayName: player.displayName
+            displayName: player.displayName,
+            diceColor: player.diceColor || 'gray'
         }))
     };
 }
@@ -43,6 +46,7 @@ export class MatchmakingService {
             userId: String(user.id),
             email: String(user.email),
             displayName: displayNameFor(user.email),
+            diceColor: selectedDiceColor(user),
             joinedAt: now,
             lastSeenAt: now
         };

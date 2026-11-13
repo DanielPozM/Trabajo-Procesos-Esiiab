@@ -1583,6 +1583,208 @@
                 color: #513519;
             }
 
+        /* ==================================
+           COLORES DE DADOS Y PERSONALIZACIÓN
+        ================================== */
+
+        .die.color-gray:not(.hidden) {
+            color: #2f3337;
+            background: linear-gradient(145deg, #ececec, #a8adb3);
+            border-color: #7c8288;
+        }
+
+        .die.color-green:not(.hidden) {
+            color: #f4fff6;
+            background: linear-gradient(145deg, #5fd08a, #1f7a45);
+            border-color: #176139;
+            text-shadow: 0 1px 2px rgba(0,0,0,.35);
+        }
+
+        .die.color-blue:not(.hidden) {
+            color: #f2f8ff;
+            background: linear-gradient(145deg, #63b3ed, #1d4f91);
+            border-color: #17406f;
+            text-shadow: 0 1px 2px rgba(0,0,0,.35);
+        }
+
+        .die.color-purple:not(.hidden) {
+            color: #faf5ff;
+            background: linear-gradient(145deg, #b794f6, #5b21b6);
+            border-color: #4c1d95;
+            text-shadow: 0 1px 2px rgba(0,0,0,.35);
+        }
+
+        .die.color-yellow:not(.hidden) {
+            color: #3b2a0a;
+            background: linear-gradient(145deg, #f8dc7a, #b7791f);
+            border-color: #8a5a14;
+        }
+
+        .die.color-red:not(.hidden) {
+            color: #fff4f0;
+            background: linear-gradient(145deg, #f08080, #9b1c1c);
+            border-color: #7f1d1d;
+            text-shadow: 0 1px 2px rgba(0,0,0,.35);
+        }
+
+        .die.color-pink:not(.hidden) {
+            color: #fff0f7;
+            background: linear-gradient(145deg, #f9a8d4, #be185d);
+            border-color: #9d174d;
+            text-shadow: 0 1px 2px rgba(0,0,0,.35);
+        }
+
+        .customize-container {
+            width: 100%;
+            max-width: 980px;
+            margin: 0 auto;
+            padding: 55px 25px 70px;
+        }
+
+        .customize-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 20px;
+            flex-wrap: wrap;
+            margin-bottom: 26px;
+        }
+
+            .customize-header h1 {
+                font-size: 34px;
+                text-shadow: 1px 2px 0 rgba(0,0,0,.35);
+            }
+
+            .customize-header p {
+                color: #dcc79b;
+                margin-top: 6px;
+                line-height: 1.5;
+            }
+
+        .customize-card {
+            color: #543719;
+            background: repeating-linear-gradient(0deg, rgba(109,75,34,.02) 0 1px, transparent 1px 4px), linear-gradient(145deg, #f5e8c5, #dec28a);
+            border: 3px solid #b58a4a;
+            border-radius: 10px 24px 10px 24px;
+            padding: 24px;
+            box-shadow: inset 0 0 0 3px rgba(255,247,214,.35), 0 14px 30px rgba(0,0,0,.28);
+        }
+
+        .customize-preview {
+            display: flex;
+            align-items: center;
+            gap: 18px;
+            margin-bottom: 24px;
+            padding-bottom: 22px;
+            border-bottom: 2px dashed #c5aa76;
+        }
+
+            .customize-preview p {
+                color: #765b35;
+                font-size: 14px;
+                line-height: 1.5;
+            }
+
+        .preview-die {
+            width: 92px;
+            height: 92px;
+            font-size: 46px;
+            flex: 0 0 auto;
+        }
+
+        .dice-colors {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 14px;
+        }
+
+        .color-option {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 9px;
+            padding: 16px 12px;
+            color: #543719;
+            background: linear-gradient(145deg, #fff8e5, #ead7a6);
+            border: 2px solid #c0a067;
+            border-radius: 8px 16px 8px 16px;
+            font-family: Georgia, "Times New Roman", serif;
+            cursor: pointer;
+            transition: transform .15s, box-shadow .15s, border-color .15s;
+        }
+
+            .color-option:hover:not(.locked) {
+                transform: translateY(-3px);
+                box-shadow: 0 8px 16px rgba(59,38,17,.25);
+            }
+
+            .color-option.selected {
+                border-color: #e0b34e;
+                box-shadow: 0 0 0 3px rgba(224,179,78,.35), 0 8px 16px rgba(59,38,17,.2);
+            }
+
+            .color-option.locked {
+                cursor: not-allowed;
+                opacity: .58;
+                filter: grayscale(.45);
+            }
+
+            .color-option .color-die {
+                width: 52px;
+                height: 52px;
+                font-size: 25px;
+            }
+
+            .color-option .color-name {
+                font-weight: 700;
+                font-size: 15px;
+            }
+
+            .color-option .color-chance {
+                color: #806644;
+                font-size: 11px;
+                text-transform: uppercase;
+                letter-spacing: .08em;
+            }
+
+            .color-option .color-lock {
+                color: #7a6750;
+                font-size: 12px;
+            }
+
+            .color-option .color-selected {
+                color: #2f6b3c;
+                font-size: 11px;
+                font-weight: 700;
+                text-transform: uppercase;
+                letter-spacing: .08em;
+            }
+
+        .reward-line {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 10px;
+            padding: 6px 12px;
+            border-radius: 999px;
+            background: rgba(255,255,255,.5);
+            font-weight: 700;
+        }
+
+        .reward-die {
+            width: 26px;
+            height: 26px;
+            border-radius: 6px;
+            font-size: 13px;
+        }
+
+        @media (max-width: 600px) {
+            .customize-preview {
+                flex-direction: column;
+                text-align: center;
+            }
+        }
+
         #alert-container .alert {
             border: 1px solid rgba(255,230,174,.45);
             border-radius: 5px 12px 5px 12px;
@@ -1973,6 +2175,13 @@
                         </button>
 
 
+                        <button id="customize-dice"
+                                class="btn btn-secondary"
+                                type="button">
+                            🎨 Personalizar dado
+                        </button>
+
+
                         <button id="dashboard-logout"
                                 class="btn btn-danger">
                             Cerrar sesión
@@ -1994,6 +2203,87 @@
 
                         <div class="loading">
                             Cargando usuarios...
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- ==================================
+             PERSONALIZAR DADO
+        ================================== -->
+
+        <section id="customize-view"
+                 class="view">
+
+            <div class="customize-container">
+
+                <div class="customize-header">
+
+                    <div>
+
+                        <p class="game-kicker">
+                            Colección de la tripulación
+                        </p>
+
+                        <h1>
+                            PERSONALIZAR DADO
+                        </h1>
+
+                        <p id="customize-subtitle">
+                            Gana partidas para desbloquear colores y elige el
+                            que lucirán tus dados.
+                        </p>
+
+                    </div>
+
+
+                    <button id="customize-back"
+                            class="btn btn-secondary"
+                            type="button">
+                        Volver al panel
+                    </button>
+
+                </div>
+
+
+                <div class="customize-card">
+
+                    <div class="customize-preview">
+
+                        <div id="customize-preview-die"
+                             class="die preview-die color-gray">
+                            6
+                        </div>
+
+                        <div>
+
+                            <div id="customize-selected-name"
+                                 class="seat-name">
+                                Dado gris
+                            </div>
+
+                            <p>
+                                El gris es el color base. Cada victoria sortea
+                                un color nuevo: verde 50 %, azul 20 %, morado
+                                10 %, amarillo 5 %, rojo 4 % y rosa 1 %.
+                            </p>
+
+                        </div>
+
+                    </div>
+
+
+                    <div id="dice-colors"
+                         class="dice-colors">
+
+                        <div class="loading">
+                            Cargando colores...
                         </div>
 
                     </div>

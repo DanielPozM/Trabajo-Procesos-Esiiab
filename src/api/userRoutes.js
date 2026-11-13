@@ -40,6 +40,41 @@ export function userRoutes(service) {
         }
     });
 
+    // Colores de dados del propio usuario y estado de desbloqueo.
+    router.get('/me/dice-colors', auth, async (req, res) => {
+        try {
+            const requester = await getRequester(req, res);
+            if (!requester) return;
+
+            res.json(await service.getDiceColors(requester.id));
+        } catch (error) {
+            sendError(res, error, logError);
+        }
+    });
+
+    // Seleccionar un color ya desbloqueado.
+    router.patch('/me/dice-color', auth, async (req, res) => {
+        try {
+            const requester = await getRequester(req, res);
+            if (!requester) return;
+
+            const state = await service.selectDiceColor(
+                requester.id,
+                req.body?.colorId
+            );
+
+            info(
+                'Color de dados actualizado',
+                requester.email,
+                state.selected
+            );
+
+            res.json(state);
+        } catch (error) {
+            sendError(res, error, logError);
+        }
+    });
+
     // Comprobar si un usuario está activo: solo administrador.
     router.get('/:id/active', auth, async (req, res) => {
         try {
