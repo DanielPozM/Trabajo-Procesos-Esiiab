@@ -60,7 +60,11 @@ export class MatchmakingRepositoryFirestore {
         return (
             snapshot.docs
                 .map(doc => doc.data())
-                .find(match => match.status === 'active') || null
+                .find(
+                    match =>
+                        match.status === 'active' &&
+                        match.game?.status !== 'finished'
+                ) || null
         );
     }
 

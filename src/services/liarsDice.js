@@ -286,6 +286,48 @@ export function applyChallenge(
 }
 
 /**
+ * Resuelve el abandono de una partida en curso: el rival gana.
+ *
+ * Es idempotente: si la partida ya ha terminado devuelve el mismo estado,
+ * para que un doble clic o un reintento no cambien al ganador.
+ */
+export function applyForfeit(
+    game,
+    playerId,
+    { now = () => Date.now() } = {}
+) {
+    if (!game || game.status !== 'playing') {
+        return game;
+    }
+
+    const player = String(playerId);
+    const winnerId = otherPlayerId(game, player);
+
+    if (!winnerId) {
+        throw new Error('GAME_REQUIRES_TWO_PLAYERS');
+    }
+
+    const at = nowIso(now);
+    const next = cloneGame(game);
+
+    next.status = 'finished';
+    next.turnPlayerId = null;
+    next.currentBid = null;
+    next.winnerId = winnerId;
+    next.forfeitedBy = player;
+    next.updatedAt = at;
+    next.history = pushHistory(next.history, {
+        type: 'forfeit',
+        round: game.round,
+        playerId: player,
+        winnerId,
+        at
+    });
+
+    return next;
+}
+
+/**
  * Vista segura para un jugador: nunca incluye los dados del rival salvo que
  * hayan sido revelados en una acusación.
  */
@@ -314,6 +356,7 @@ export function toPublicGame(game, viewerId) {
         turnPlayerId: game.turnPlayerId,
         currentBid: game.currentBid ? { ...game.currentBid } : null,
         winnerId: game.winnerId,
+        forfeitedBy: game.forfeitedBy || null,
         lastResult: game.lastResult ? { ...game.lastResult } : null,
         players,
         yourDice,

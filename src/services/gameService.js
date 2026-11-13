@@ -1,6 +1,7 @@
 import {
     applyBid,
     applyChallenge,
+    applyForfeit,
     createGame,
     toPublicGame
 } from './liarsDice.js';
@@ -206,6 +207,15 @@ export class GameService {
             const current = await this._ensureGame(match);
             const nextGame = updater(current.game, String(user.id));
 
+            // Algunas acciones son idempotentes (por ejemplo, abandonar una
+            // partida ya terminada) y devuelven el mismo estado. No hace falta
+            // volver a escribirlo para no subir la versión sin motivo.
+            if (nextGame === current.game) {
+                await this._grantReward(current);
+
+                return this._view(current, user.id);
+            }
+
             try {
                 const saved = await this.repository.saveGame(current.id, {
                     game: nextGame,
@@ -237,6 +247,16 @@ export class GameService {
                 now: this.now,
                 randomInt: this.randomInt
             })
+        );
+    }
+
+    /**
+     * Abandonar la mesa equivale a rendirse: el rival gana la partida y esta
+     * se cierra para que el jugador que se queda pueda buscar otra.
+     */
+    abandon(user, matchId) {
+        return this._mutate(user, matchId, (game, playerId) =>
+            applyForfeit(game, playerId, { now: this.now })
         );
     }
 }

@@ -39,6 +39,30 @@ export function gameRoutes(userService, gameService) {
         }
     });
 
+    // Abandonar la mesa: el rival gana y la partida se cierra.
+    router.post('/:id/abandon', auth, async (req, res) => {
+        try {
+            const requester = await getRequester(req, res);
+            if (!requester) return;
+
+            const state = await gameService.abandon(
+                requester,
+                req.params.id
+            );
+
+            info(
+                'Partida abandonada',
+                req.params.id,
+                requester.email,
+                state.winnerId
+            );
+
+            res.json(state);
+        } catch (error) {
+            sendError(res, error, logError);
+        }
+    });
+
     // Subir la apuesta: cantidad y cara.
     router.post('/:id/bids', auth, async (req, res) => {
         try {

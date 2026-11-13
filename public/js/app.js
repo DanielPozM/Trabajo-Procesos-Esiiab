@@ -391,7 +391,8 @@ document
 
 async function logout() {
     stopMatchmakingPolling();
-    stopGamePolling();
+
+    await abandonCurrentGame();
 
     try {
         await apiClient.logout();
@@ -985,14 +986,16 @@ function renderResult(state) {
     );
     const youWin = Boolean(winner?.isYou);
     const result = state.lastResult;
+    const isForfeit = Boolean(state.forfeitedBy);
 
-    const detail = result
-        ? ` La última apuesta era <strong>${result.bid.quantity} × ${
-              result.bid.face
-          }</strong> y había <strong>${result.matchingCount}</strong> ${
-              result.matchingCount === 1 ? 'dado' : 'dados'
-          } con esa cara.`
-        : '';
+    const detail =
+        !isForfeit && result
+            ? ` La última apuesta era <strong>${result.bid.quantity} × ${
+                  result.bid.face
+              }</strong> y había <strong>${result.matchingCount}</strong> ${
+                  result.matchingCount === 1 ? 'dado' : 'dados'
+              } con esa cara.`
+            : '';
 
     element.hidden = false;
     element.className = `game-result ${youWin ? 'win' : 'lose'}`;
@@ -1020,9 +1023,13 @@ function renderResult(state) {
     element.innerHTML = `
         <h2>${youWin ? '¡Has ganado la partida!' : 'Has perdido la partida'}</h2>
         <p>${
-            youWin
-                ? 'Tu rival se ha quedado sin dados.'
-                : 'Te has quedado sin dados.'
+            isForfeit
+                ? youWin
+                    ? 'Tu rival ha abandonado la partida.'
+                    : 'Has abandonado la partida.'
+                : youWin
+                  ? 'Tu rival se ha quedado sin dados.'
+                  : 'Te has quedado sin dados.'
         }${detail}</p>
         ${rewardHtml}
     `;
@@ -1121,6 +1128,21 @@ function renderLog(state) {
                     (${entry.quantity} × ${entry.face}).
                     ${detail}
                     <span class="log-loss">${loser} pierde un dado.</span>
+                    <span class="seat-meta">${time}</span>
+                </li>
+            `;
+        }
+
+        if (entry.type === 'forfeit') {
+            const winner = escapeHtml(
+                playerName(state, entry.winnerId)
+            );
+
+            return `
+                <li>
+                    <strong>Fin</strong> ·
+                    ${name} abandona la partida.
+                    <span class="log-win">${winner} gana la partida.</span>
                     <span class="seat-meta">${time}</span>
                 </li>
             `;
@@ -1423,15 +1445,30 @@ async function callChallenge() {
     }
 }
 
-function leaveGame() {
+async function abandonCurrentGame() {
+    const matchId = currentMatchId;
+
     stopGamePolling();
 
     currentMatchId = null;
     currentGameState = null;
     lastBidKey = null;
 
+    if (!matchId) return;
+
+    try {
+        await apiClient.abandonGame(matchId);
+    } catch (error) {
+        console.error(error);
+        showAlert(messageFor(error), 'error');
+    }
+}
+
+async function leaveGame() {
+    await abandonCurrentGame();
+
     if (currentUser) {
-        showDashboard(currentUser);
+        await showDashboard(currentUser);
     }
 }
 
