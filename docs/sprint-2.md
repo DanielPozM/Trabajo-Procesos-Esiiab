@@ -7,7 +7,7 @@ timestamp: 2026-11-22
 
 # Sprint 2
 
-**Objetivo:** Por definir.
+**Objetivo:** producto jugable al final del sprint.
 
 No hubo criterios de aceptación formales: el objetivo era tener un producto jugable al final del sprint. Este apartado se ha reconstruido de forma retroactiva a partir del código, el [README](../README.md), el historial de Git y [memoria-sprint2.md](memoria-sprint2.md). Los ID `S2-*` son la nomenclatura de este bundle para agrupar lo implementado.
 
@@ -43,6 +43,97 @@ Siguen vigentes todos los ID de [requisitos.md](requisitos.md): la arquitectura 
 | 4 | Recompensas y color de dados | [#15](https://github.com/DanielPozM/Trabajo-Procesos-Esiiab/pull/15) | `8572da7` | 2026-11-13 |
 | Extra | Corrección del abandono de partida | [#16](https://github.com/DanielPozM/Trabajo-Procesos-Esiiab/pull/16) | `7aaf86f` | 2026-11-13 |
 | Documentación | Memoria del Sprint 2 | [#17](https://github.com/DanielPozM/Trabajo-Procesos-Esiiab/pull/17) | `de68a92` | 2026-11-13 |
+
+## Diagrama de secuencia
+
+Flujo representativo del Sprint 2: emparejamiento, apertura de la mesa, una apuesta, una acusación y cierre con recompensa o abandono. Los nombres de métodos corresponden al código.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor A as Jugador A
+    actor B as Jugador B
+    participant API as API HTTP
+    participant MM as MatchmakingService
+    participant GS as GameService
+    participant MOTOR as liarsDice
+    participant REPO as Repositorio
+    participant USER as UserService
+
+    A->>API: POST /api/matchmaking/join
+    API->>MM: join(usuario A)
+    MM->>REPO: enqueueOrMatch(entrada A)
+    REPO-->>MM: waiting
+    MM-->>A: waiting
+
+    B->>API: POST /api/matchmaking/join
+    API->>MM: join(usuario B)
+    MM->>REPO: enqueueOrMatch(entrada B)
+    REPO->>REPO: transacción que elige al más antiguo y crea partida
+    REPO-->>MM: matched + partida
+    MM-->>B: matched + partida
+
+    A->>API: GET /api/matchmaking/status
+    API->>MM: getStatus(usuario A)
+    MM->>REPO: getStatus(A)
+    REPO-->>MM: matched + partida
+    MM-->>A: matched + partida
+
+    A->>API: GET /api/matches/id
+    API->>GS: getState(A, id)
+    GS->>REPO: getMatch(id)
+    REPO-->>GS: partida sin game
+    GS->>MOTOR: createGame(playerIds, now, randomInt)
+    MOTOR-->>GS: estado inicial, 4 dados por jugador
+    GS->>REPO: saveGame(game, expectedVersion)
+    alt conflicto de versión
+        REPO-->>GS: MATCH_VERSION_CONFLICT
+        GS->>REPO: getMatch más saveGame, reintento
+    else sin conflicto
+        REPO-->>GS: partida guardada
+    end
+    GS-->>A: vista privada, solo sus dados
+
+    A->>API: POST /api/matches/id/bids
+    API->>GS: placeBid(A, id, bid)
+    GS->>MOTOR: applyBid(game, A, bid)
+    alt apuesta inválida
+        MOTOR-->>GS: error de negocio
+        GS-->>A: respuesta con código de error
+    else apuesta válida
+        MOTOR-->>GS: estado nuevo
+        GS->>REPO: saveGame(game, expectedVersion)
+        REPO-->>GS: guardado
+        GS-->>A: vista privada actualizada
+    end
+
+    B->>API: POST /api/matches/id/challenge
+    API->>GS: challenge(B, id)
+    GS->>MOTOR: applyChallenge(game, B)
+    MOTOR-->>GS: resultado, un dado menos, posible winnerId
+    GS->>REPO: saveGame(game, expectedVersion)
+    opt partida terminada
+        GS->>USER: claimDiceReward(winnerId, matchId, colorId)
+        USER-->>GS: premio idempotente
+        GS->>REPO: saveReward(matchId, reward)
+    end
+    GS-->>B: vista privada + reward
+
+    B->>API: POST /api/matches/id/abandon
+    API->>GS: abandon(B, id)
+    GS->>MOTOR: applyForfeit(game, B)
+    MOTOR-->>GS: partida cerrada, gana A
+    GS->>REPO: saveGame(game, expectedVersion)
+    opt recompensa pendiente
+        GS->>USER: claimDiceReward(ganador, matchId, colorId)
+        GS->>REPO: saveReward(matchId, reward)
+    end
+    GS-->>B: partida cerrada
+```
+
+La recompensa también se concede al consultar una partida ya terminada (`getState`); se guarda una sola vez por partida.
+
+Versiones listas para entregar fuera del repositorio: imagen y PDF del diagrama en `entregables/diagrama-secuencia-sprint2.png` y `entregables/diagrama-secuencia-sprint2.pdf`, y el PDF de esta documentación en `entregables/documentacion-sprint2.pdf`.
 
 ## Pruebas
 
