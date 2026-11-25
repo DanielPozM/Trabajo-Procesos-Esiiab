@@ -12,12 +12,17 @@ Bundle OKF (Open Knowledge Format) generado de forma retroactiva a partir del c�
 | [decisiones.md](decisiones.md) | Decisiones de diseño y sus motivos. |
 | [procesos.md](procesos.md) | Flujo de trabajo, integración continua y despliegue continuo. |
 | [sprint-1.md](sprint-1.md) | Hitos, seguimiento por pull request y retrospectiva del Sprint 1. |
-| [sprint-2.md](sprint-2.md) | Objetivos, requisitos funcionales y estado del Sprint 2. |
+| [sprint-2.md](sprint-2.md) | Objetivos, requisitos funcionales, diagrama de secuencia y estado del Sprint 2. |
 
 ## Documentos relacionados
 
 - [memoria-sprint2.md](memoria-sprint2.md): memoria detallada del Sprint 2 (decisiones, incidencias y métricas).
 - [README.md](../README.md): tecnologías, ejecución local, pruebas, variables de entorno, API y despliegue. Este bundle enlaza al README en vez de repetirlo.
+
+## Entregables
+
+- [diagrama-secuencia-sprint2.png](../entregables/diagrama-secuencia-sprint2.png) y [diagrama-secuencia-sprint2.pdf](../entregables/diagrama-secuencia-sprint2.pdf): diagrama de secuencia del Sprint 2 en imagen y PDF.
+- [documentacion-sprint2.pdf](../entregables/documentacion-sprint2.pdf): documentación del Sprint 2 para entregar como anexo «Desarrollo del Proyecto».
 
 ## Alcance y límites
 
